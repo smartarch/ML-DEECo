@@ -13,6 +13,7 @@ The framework uses neural networks trained in a supervised manner. A simulation 
   * [Adding machine-learning-based estimates](#adding-machine-learning-based-estimates)
   * [Running the simulation](#running-the-simulation)
 * [Notes to implementation](#notes-to-implementation)
+* [Examples](#examples)
 
 ## Installation
 
@@ -400,3 +401,9 @@ We use the target feature to automatically infer the activation function for the
 ### Caching of estimates
 
 For role-assigned estimates, we compute the estimated values for all potential member components at the same time and cache them. It saves time as the neural network is capable of processing all the potential members in one batch. This implies that the inputs of the model can't use the information about the already selected members for this role.
+
+## Examples
+
+In the `examples` folder, two example projects are located:
+  * [`simple_example`](examples/simple_example) &ndash; a simple example showing basic usage of the ML-DEECo framework.
+  * [`all_example`](examples/all_example) &ndash; example of all predictions defined in the taxonomy (serves mainly as a test of the implementation).
