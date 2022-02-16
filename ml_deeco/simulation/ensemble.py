@@ -161,22 +161,23 @@ class someOf:
 
         return True
 
-    def withValueEstimate(self):
+    def withValueEstimate(self, collectOnlyIfMaterialized=True):
         """Assign a `ValueEstimate` to the role."""
-        return someOfWithEstimate(self.compClass, ValueEstimate())
+        return someOfWithEstimate(self.compClass, ValueEstimate(), collectOnlyIfMaterialized)
 
-    def withTimeEstimate(self, **dataCollectorKwargs):
+    def withTimeEstimate(self, collectOnlyIfMaterialized=True, **dataCollectorKwargs):
         """Assign a `TimeEstimate` to the role."""
-        return someOfWithEstimate(self.compClass, TimeEstimate(**dataCollectorKwargs))
+        return someOfWithEstimate(self.compClass, TimeEstimate(**dataCollectorKwargs), collectOnlyIfMaterialized)
 
 
 class someOfWithEstimate(someOf):
 
-    def __init__(self, compClass, estimate: 'Estimate'):
+    def __init__(self, compClass, estimate: 'Estimate', collectOnlyIfMaterialized: bool):
         super().__init__(compClass)
         self.estimate = estimate
         self.estimate.inputsIdFunction = lambda instance, comp: comp
         self.estimate.targetsIdFunction = self.estimate.inputsIdFunction
+        self.estimate.collectOnlyIfMaterialized = collectOnlyIfMaterialized
 
     def using(self, estimator: 'Estimator'):
         """Assigns an estimator to the estimate."""
@@ -199,8 +200,10 @@ class someOfWithEstimate(someOf):
         sel.estimate = estimate
         return sel
 
-    def collectEstimateData(self, instance, allComponents):
-        # selected = self.get(instance, type(instance))
+    def collectEstimateData(self, instance, allComponents, materialized):
+        if self.estimate.collectOnlyIfMaterialized and not materialized:
+            return
+
         filteredComponents = self.filterComponentsByType(instance, allComponents)
         for comp in filteredComponents:
             self.estimate.collectInputs(instance, comp)
@@ -227,20 +230,20 @@ class oneOf(someOf):
     def cardinality(self, cardinalityFn):
         raise TypeError("To specify cardinality, use 'someOf' instead of 'oneOf'.")
 
-    def withValueEstimate(self):
+    def withValueEstimate(self, collectOnlyIfMaterialized=True):
         """Assign a `ValueEstimate` to the role."""
-        return oneOfWithEstimate(self.compClass, ValueEstimate())
+        return oneOfWithEstimate(self.compClass, ValueEstimate(), collectOnlyIfMaterialized)
 
-    def withTimeEstimate(self, **dataCollectorKwargs):
+    def withTimeEstimate(self, collectOnlyIfMaterialized=True, **dataCollectorKwargs):
         """Assign a `TimeEstimate` to the role."""
-        return oneOfWithEstimate(self.compClass, TimeEstimate(**dataCollectorKwargs))
+        return oneOfWithEstimate(self.compClass, TimeEstimate(**dataCollectorKwargs), collectOnlyIfMaterialized)
 
 
 class oneOfWithEstimate(someOfWithEstimate):
-    def __init__(self, compClass, estimate: 'Estimate'):
+    def __init__(self, compClass, estimate: 'Estimate', collectOnlyIfMaterialized: bool):
         if hasattr(compClass, "estimate"):
             raise TypeError(f"The component type '{self.compClass}' cannot be used with 'oneOfWithEstimate' as it already has another attribute named 'estimate'. Please rename the attribute 'estimate' in '{self.compClass}'.")
-        super().__init__(compClass, estimate)
+        super().__init__(compClass, estimate, collectOnlyIfMaterialized)
         self.cardinalityFn = lambda inst: 1
 
     def get(self, instance, owner):
@@ -259,6 +262,9 @@ class oneOfWithEstimate(someOfWithEstimate):
 
 class Ensemble:
 
+    def __init__(self):
+        self.materialized = False
+
     def materialize(self, components, otherEnsembles):
         """
         Performs the ensemble materialization.
@@ -275,9 +281,13 @@ class Ensemble:
         bool
             True if the ensemble was materialized.
         """
+        self.materialized = False
 
         # sort the roles of the ensemble according to id
-        compFields = sorted([fld for (fldName, fld) in type(self).__dict__.items() if not fldName.startswith('__') and isinstance(fld, someOf)], key=lambda fld: fld.id)
+        # note: depending on the name of the select and cardinality functions, we might get duplicates here which we definitely don't want
+        compFields = sorted(set([fld for (fldName, fld) in type(self).__dict__.items()
+                                 if not fldName.startswith('__') and isinstance(fld, someOf)]),
+                            key=lambda fld: fld.id)
 
         # select members for the roles
         allOk = True
@@ -289,6 +299,8 @@ class Ensemble:
         if not allOk:
             for fld in compFields:
                 fld.reset(self)
+        else:
+            self.materialized = True
                 
         return allOk
     
@@ -310,10 +322,13 @@ class Ensemble:
         # ensemble roles
         rolesWithEstimate = [fld for (fldName, fld) in type(self).__dict__.items()
                              if not fldName.startswith('__') and isinstance(fld, someOfWithEstimate)]
-        for role in rolesWithEstimate:
-            role.collectEstimateData(self, components)
+        # note: depending on the name of the 'select', 'utility' and 'cardinality' functions, we might get duplicates here which we definitely don't want
+        for role in set(rolesWithEstimate):
+            role.collectEstimateData(self, components, self.materialized)
 
         # ensemble
+        if not self.materialized:
+            return  # do not collect data when ensemble is not materialized
         estimates = [fld for (fldName, fld) in type(self).__dict__.items()
                      if not fldName.startswith('__') and isinstance(fld, Estimate)]
         for estimate in estimates:

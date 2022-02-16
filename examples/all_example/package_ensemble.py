@@ -6,25 +6,32 @@ from ml_deeco.simulation import Ensemble, oneOf, someOf
 class PackageEnsemble(Ensemble):
 
     def __init__(self, location):
+        super().__init__()
         self.location = location  # storage location
 
     truck = oneOf(Truck)
 
     # role (ensemble-component) estimates
 
-    truckWithRegressionEstimate = oneOf(Truck).withValueEstimate().inTimeSteps(10)\
+    truckWithRegressionEstimate = oneOf(Truck).withValueEstimate().inTimeSteps(5)\
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_oneOf_regression", name="Role oneOf Regression"))
-    truckWithClassificationEstimate = oneOf(Truck).withValueEstimate().inTimeSteps(10)\
+    truckWithClassificationEstimate = oneOf(Truck).withValueEstimate().inTimeSteps(5)\
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_oneOf_classification", name="Role oneOf Classification"))
     truckWithTimeEstimate = oneOf(Truck).withTimeEstimate()\
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_oneOf_time", name="Role oneOf Time"))
 
-    trucksWithRegressionEstimate = someOf(Truck).withValueEstimate().inTimeSteps(10) \
+    trucksWithRegressionEstimate = someOf(Truck).withValueEstimate().inTimeSteps(5) \
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_someOf_regression", name="Role someOf Regression"))
-    trucksWithClassificationEstimate = someOf(Truck).withValueEstimate().inTimeSteps(10) \
+    trucksWithClassificationEstimate = someOf(Truck).withValueEstimate().inTimeSteps(5) \
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_someOf_classification", name="Role someOf Classification"))
     trucksWithTimeEstimate = someOf(Truck).withTimeEstimate() \
         .using(NeuralNetworkEstimator([32], outputFolder="results/role_someOf_time", name="Role someOf Time"))
+
+    # without collectOnlyIfMaterialized=False, this will not collect any data as the ensemble is never materialized in 10 time steps in a row
+    truckWithRegressionEstimateAlways = oneOf(Truck).withValueEstimate(collectOnlyIfMaterialized=False).inTimeSteps(10) \
+        .using(NeuralNetworkEstimator([32], outputFolder="results/role_oneOf_regression_always", name="Role oneOf Regression (always)"))
+    trucksWithRegressionEstimateAlways = someOf(Truck).withValueEstimate(collectOnlyIfMaterialized=False).inTimeSteps(10) \
+        .using(NeuralNetworkEstimator([32], outputFolder="results/role_someOf_regression_always", name="Role someOf Regression (always)"))
 
     # we use the same select for all the roles and cardinality 1 for the someOf -> all of them will select the same component
 
@@ -56,6 +63,14 @@ class PackageEnsemble(Ensemble):
     def is_available(self, truck, otherEnsembles):
         return truck.state == TruckState.AVAILABLE
 
+    @truckWithRegressionEstimateAlways.select
+    def is_available(self, truck, otherEnsembles):
+        return truck.state == TruckState.AVAILABLE
+
+    @trucksWithRegressionEstimateAlways.select
+    def is_available(self, truck, otherEnsembles):
+        return truck.state == TruckState.AVAILABLE
+
     @trucksWithRegressionEstimate.cardinality
     def cardinality(self):
         return 1
@@ -68,6 +83,10 @@ class PackageEnsemble(Ensemble):
     def cardinality(self):
         return 1
 
+    @trucksWithRegressionEstimateAlways.cardinality
+    def cardinality(self):
+        return 1
+
     # inputs and outputs for the estimates
 
     @truckWithRegressionEstimate.estimate.input(NumericFeature(0, 1))
@@ -76,6 +95,8 @@ class PackageEnsemble(Ensemble):
     @trucksWithRegressionEstimate.estimate.input(NumericFeature(0, 1))
     @trucksWithClassificationEstimate.estimate.input(NumericFeature(0, 1))
     @trucksWithTimeEstimate.estimate.input(NumericFeature(0, 1))
+    @truckWithRegressionEstimateAlways.estimate.input(NumericFeature(0, 1))
+    @trucksWithRegressionEstimateAlways.estimate.input(NumericFeature(0, 1))
     def fuel(self, truck):
         return truck.fuel
 
@@ -85,11 +106,15 @@ class PackageEnsemble(Ensemble):
     @trucksWithRegressionEstimate.estimate.input(CategoricalFeature(TruckState))
     @trucksWithClassificationEstimate.estimate.input(CategoricalFeature(TruckState))
     @trucksWithTimeEstimate.estimate.input(CategoricalFeature(TruckState))
+    @truckWithRegressionEstimateAlways.estimate.input(CategoricalFeature(TruckState))
+    @trucksWithRegressionEstimateAlways.estimate.input(CategoricalFeature(TruckState))
     def state(self, truck):
         return truck.state
 
     @truckWithRegressionEstimate.estimate.target(NumericFeature(0, 1))
     @trucksWithRegressionEstimate.estimate.target(NumericFeature(0, 1))
+    @truckWithRegressionEstimateAlways.estimate.target(NumericFeature(0, 1))
+    @trucksWithRegressionEstimateAlways.estimate.target(NumericFeature(0, 1))
     def fuel(self, truck):
         return truck.fuel
 
@@ -115,15 +140,19 @@ class PackageEnsemble(Ensemble):
     @trucksWithClassificationEstimate.estimate.targetsValid
     @trucksWithTimeEstimate.estimate.inputsValid
     @trucksWithTimeEstimate.estimate.conditionsValid
+    @truckWithRegressionEstimateAlways.estimate.inputsValid
+    @truckWithRegressionEstimateAlways.estimate.targetsValid
+    @trucksWithRegressionEstimateAlways.estimate.inputsValid
+    @trucksWithRegressionEstimateAlways.estimate.targetsValid
     def not_terminated(self, truck):
         return truck.state != TruckState.TERMINATED and truck.state != TruckState.AT_STATION
 
     # ensemble estimates
     # The inputs and targets of these estimates don't make much sense as they are directly copied from the Truck component. It makes much more sense to predict values related to the ensemble itself, such as the number of components which will become members of a role (but in our case, that is not interesting as we have only cardinality 1). We also don't have any other attributes of the ensemble to use as the inputs.
 
-    regressionEstimate = ValueEstimate().inTimeSteps(10) \
+    regressionEstimate = ValueEstimate().inTimeSteps(5) \
         .using(NeuralNetworkEstimator([32], outputFolder="results/ensemble_regression", name="Ensemble Regression"))
-    classificationEstimate = ValueEstimate().inTimeSteps(10) \
+    classificationEstimate = ValueEstimate().inTimeSteps(5) \
         .using(NeuralNetworkEstimator([32], outputFolder="results/ensemble_classification", name="Ensemble Classification"))
     timeEstimate = TimeEstimate() \
         .using(NeuralNetworkEstimator([32], outputFolder="results/ensemble_time", name="Ensemble Time"))
@@ -171,6 +200,11 @@ class PackageEnsemble(Ensemble):
         fuel = self.truckWithRegressionEstimate.estimate(truck)
         assert type(fuel) == float and 0 <= fuel <= 1
         fuel = self.trucksWithRegressionEstimate.estimate(truck)
+        assert type(fuel) == float and 0 <= fuel <= 1
+
+        fuel = self.truckWithRegressionEstimateAlways.estimate(truck)
+        assert type(fuel) == float and 0 <= fuel <= 1
+        fuel = self.trucksWithRegressionEstimateAlways.estimate(truck)
         assert type(fuel) == float and 0 <= fuel <= 1
 
         state = self.truckWithClassificationEstimate.estimate(truck)

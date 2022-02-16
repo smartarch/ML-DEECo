@@ -5,6 +5,7 @@ from ml_deeco.simulation import Ensemble, oneOf
 class PackageEnsemble(Ensemble):
 
     def __init__(self, location):
+        super().__init__()
         self.location = location  # storage location
 
     truck = oneOf(Truck)

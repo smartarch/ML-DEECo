@@ -52,7 +52,7 @@ def materialize_ensembles(components, ensembles):
         if ens.materialize(components, materializedEnsembles):
             materializedEnsembles.append(ens)
             ens.actuate()
-    for ens in materializedEnsembles:
+    for ens in potentialEnsembles:
         ens.collectEstimatesData(components)
 
     return materializedEnsembles
