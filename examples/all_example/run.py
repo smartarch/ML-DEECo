@@ -9,14 +9,14 @@ tf.random.set_seed(42)
 from truck import Truck
 from package_ensemble import PackageEnsemble
 
-from ml_deeco.simulation import Point, run_experiment
+from ml_deeco.simulation import Point2D, run_experiment
 from ml_deeco.utils import setVerboseLevel
 
 setVerboseLevel(2)
 
 
-truck = Truck(Point(0, 0))
-packageEnsemble = PackageEnsemble(Point(9, 0))
+truck = Truck(Point2D(0, 0))
+packageEnsemble = PackageEnsemble(Point2D(9, 0))
 
 
 def prepareSimulation(iteration, simulation):
@@ -24,7 +24,7 @@ def prepareSimulation(iteration, simulation):
 
     # we initialize the truck
     global truck
-    truck = Truck(Point(0, 0))
+    truck = Truck(Point2D(0, 0))
 
     # and return the lists of components (only the truck) and ensembles (one instance of PackageEnsemble)
     components = [truck]

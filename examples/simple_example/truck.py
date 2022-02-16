@@ -2,7 +2,7 @@ from enum import IntEnum
 from typing import Optional
 import tensorflow as tf
 
-from ml_deeco.simulation import Agent, Point
+from ml_deeco.simulation import MovingComponent2D, Point2D
 from ml_deeco.estimators import ValueEstimate, NeuralNetworkEstimator
 
 
@@ -22,13 +22,13 @@ truckFuelEstimator = NeuralNetworkEstimator(
 )
 
 
-class Truck(Agent):
+class Truck(MovingComponent2D):
 
     def __init__(self, location):
         super().__init__(location, speed=1)
         self.fuel = 1.
         self.state = TruckState.AVAILABLE
-        self.target: Optional[Point] = None
+        self.target: Optional[Point2D] = None
         self.station = self.location
         self.useEstimate = False
 

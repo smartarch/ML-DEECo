@@ -10,14 +10,14 @@ from truck import Truck
 from package_ensemble import PackageEnsemble
 from plot import drawPlot
 
-from ml_deeco.simulation import Point, run_experiment
+from ml_deeco.simulation import Point2D, run_experiment
 from ml_deeco.utils import setVerboseLevel, Log
 
 setVerboseLevel(2)
 
 
-truck = Truck(Point(0, 0))
-packageEnsemble = PackageEnsemble(Point(9, 0))
+truck = Truck(Point2D(0, 0))
+packageEnsemble = PackageEnsemble(Point2D(9, 0))
 
 log: Log = None  # type: ignore
 
@@ -27,7 +27,7 @@ def prepareSimulation(iteration, simulation):
 
     # we initialize the truck
     global truck
-    truck = Truck(Point(0, 0))
+    truck = Truck(Point2D(0, 0))
     if iteration > 0:
         truck.useEstimate = True
 

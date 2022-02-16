@@ -1,3 +1,12 @@
+# Build
 /ml_deeco.egg-info/
 build
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache
+
+# Run results
 examples/*/results
