@@ -385,7 +385,7 @@ class NeuralNetworkEstimator(Estimator):
         activation: Optional[Callable]
             Optional parameter to override the default activation function of the last layer, which is inferred from the target.
         loss: Optional[tf.keras.losses.Loss]
-            Optional parameter to override the default activation function of the last layer, which is inferred from the target.
+            Optional parameter to override the default loss function used for training, which is inferred from the target.
         fit_params: dict
             Additional parameters for the training function of the neural network (https://www.tensorflow.org/api_docs/python/tf/keras/Model#fit). The defaults are set in `DEFAULT_FIT_PARAMS`.
         optimizer: tf.optimizers.Optimizer

@@ -1,6 +1,6 @@
 # ML-DEECo
 
-ML-DEECo is a machine-learning-enabled component model for adaptive component architectures. It is based on DEECo component model, which features autonomic *components* and dynamic component coalitions (called *ensembles*). ML-DEECo allows exploiting machine learning in decisions about adapting component coalitions at runtime. 
+ML-DEECo is a machine-learning-enabled component model for adaptive component architectures. It is based on DEECo component model, which features autonomic *components* and dynamic component coalitions (called *ensembles*). ML-DEECo allows exploiting machine learning in decisions about adapting component coalitions at runtime.
 
 The framework uses neural networks trained in a supervised manner. A simulation of the system is run to collect data used for training the neural network. The simulation can then be run again with the trained model to see the impact of the learned model on the system.
 
@@ -19,34 +19,35 @@ The framework uses neural networks trained in a supervised manner. A simulation 
 
 Use `pip`:
 
-```
+```txt
 pip install .
 ```
 
 For local development, installing with `--editable` is recommended:
 
-```
+```txt
 pip install --editable .
 ```
 
 ## Usage
 
-The ML-DEECo framework provides abstractions for creating components and ensembles and assigning machine learning estimates to them. A simulation can then be run with the components and ensembles to observe behavior of the system and collect data for training the estimates. The trained estimate can then be used in the next run of the simulation. 
+The ML-DEECo framework provides abstractions for creating components and ensembles and assigning machine learning estimates to them. A simulation can then be run with the components and ensembles to observe behavior of the system and collect data for training the estimates. The trained estimate can then be used in the next run of the simulation.
 
 ### Specifying components
 
-The `ml_deeco.simulation` module offers base classes for `Component` and `Agent` (components with movement, the `Agent` class is derived from `Component`).
+The `ml_deeco.simulation` module offers a base class `Component` for defining components. Furthermore, we provide
+ `StationaryComponent2D` and `MovingComponent2D` (both derived from `Component`) to represent components on a 2D map. These have a `location` in a 2D space defined by an instance of `ml_deeco.simulation.Point2D` class.
 
-Each component has a `location` in a 2D space defined by an instance of `ml_deeco.simulation.Point` class. The component has an `actuate` method which is executed in every step of the simulation and should be implemented by the user.
+Each component has an `actuate` method which is executed in every step of the simulation and should be implemented by the user.
 
-The `Agent` offers the `move` method which will move the component in a direction towards a target defined in the parameter. If the agent arrives at the target, the `move` method will return `True`.
+The `MovingComponent2D` offers the `move` method which will move the component in a direction towards a target defined in the parameter. If the agent arrives at the target, the `move` method will return `True`.
 
 ```py
-from ml_deeco.simulation import Component, Agent
+from ml_deeco.simulation import StationaryComponent2D, MovingComponent2D
 
 
 # Example of a stationary component -- a charging station
-class Charger(Component):
+class Charger(StationaryComponent2D):
 
     def __init__(self, location):
         super().__init__(location)
@@ -67,7 +68,7 @@ class Charger(Component):
 
 
 # Example of an agent -- moving component
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     def __init__(self, location, speed):
         super().__init__(location, speed)
@@ -86,7 +87,7 @@ class Drone(Agent):
 
 ### Specifying ensembles
 
-Ensembles are meant for coordination of the components. The base class for ensembles is `ml_deeco.simulation.Ensemble`. Each ensemble has a priority specified by overriding the `priority` method. Furthermore, ensemble can contain components in static and dynamic roles. Static roles are represented simply as variables of the ensemble. 
+Ensembles are meant for coordination of the components. The base class for ensembles is `ml_deeco.simulation.Ensemble`. Each ensemble has a priority specified by overriding the `priority` method. Furthermore, ensemble can contain components in static and dynamic roles. Static roles are represented simply as variables of the ensemble.
 
 The declaration of a dynamic role is done via the `someOf` (meaning a list of components) or `oneOf` (single component) function with the component type as an argument. The components are assigned and re-assigned to the dynamic roles (we say that a component becomes a member of the ensemble) by the framework in every step of the simulation. To select the members for the role, several conditions can be specified using decorators:
 
@@ -135,7 +136,7 @@ The framework performs ensemble materialization (selection of the ensembles whic
 
 ### Adding machine-learning-based estimates
 
-There are two types of tasks our framework focuses on &ndash; value estimate and time-to-condition estimate. 
+There are two types of tasks our framework focuses on &ndash; value estimate and time-to-condition estimate.
 
 In the value estimate, we use the currently available observations to predict some value that can be observed only at some future point (after a fixed amount of time steps). Based on the type of the estimated value, the supervised ML models are usually divided into regression and classification.
 
@@ -145,9 +146,9 @@ The tasks are described in more detail in the paper.
 
 The definition of each estimate is split to three parts:
 
-1. The definition of the `Estimator` &ndash; machine learning model and storage for the collected data. 
+1. The definition of the `Estimator` &ndash; machine learning model and storage for the collected data.
 2. The declaration of the `Estimate` field in the component or ensemble.
-3. The definition of inputs, target and guards. These are realized as decorators on component/ensemble fields and getter functions of the component. 
+3. The definition of inputs, target and guards. These are realized as decorators on component/ensemble fields and getter functions of the component.
 
 All of these steps are realized using the `ml_deeco.estimators` module.
 
@@ -156,9 +157,10 @@ All of these steps are realized using the `ml_deeco.estimators` module.
 Estimator represents the underlying machine learning model for computing the estimates. The framework features `ConstantEstimator` and `NeuralNetworkEstimator`.
 
 Common parameters for the initializer of the `Estimator`s are:
-- `outputFolder` &ndash; The collected training data and evaluation of the training is exported there. Set to `None` to disable export.
-- `name` &ndash; String to identify the `Estimator` in the printed output of the framework (if `printLogs` is `True` and verbosity level was set by `ml_deeco.utils.setVerboseLevel`).
-- `accumulateData` &ndash; If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training.
+
+* `outputFolder` &ndash; The collected training data and evaluation of the training is exported there. Set to `None` to disable export.
+* `name` &ndash; String to identify the `Estimator` in the printed output of the framework (if `printLogs` is `True` and verbosity level was set by `ml_deeco.utils.setVerboseLevel`).
+* `accumulateData` &ndash; If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training.
 
 The `ConstantEstimator` is initialized with a constant, which is then returned every time predictions are requested. It can serve as a baseline in experiments.
 
@@ -177,18 +179,18 @@ futureBatteryEstimator = NeuralNetworkEstimator(
 
 ##### To a component
 
-The estimate is created by initializing the `ValueEstimate` class (future value estimate &ndash; both regression and classification) or `TimeEstimate` (time-to-condition estimate) and assigned as class variables of the component (in fact, they are implemented as properties).
+The estimate is created by instantiating the `ValueEstimate` class (future value estimate &ndash; both regression and classification) or `TimeEstimate` (time-to-condition estimate) and assigned as class variables of the component (in fact, they are implemented as properties).
 
 In case of value estimate, the number of time steps we want to predict into the future is set using the `inTimeSteps` method.
 
-For both `Estimate` and `TimeEstimate`, the `Estimator` (described in the previous section) must be assigned. That is done by the `using` method.
+For both `ValueEstimate` and `TimeEstimate`, the `Estimator` (described in the previous section) must be assigned. That is done by the `using` method.
 
 Multiple estimates can be assigned to a component.
 
 ```py
 from ml_deeco.estimators import ValueEstimate
 
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     futureBatteryEstimate = ValueEstimate().inTimeSteps(50)\
         .using(futureBatteryEstimator)  # defined earlier
@@ -231,15 +233,15 @@ The decorators are applied to methods of the component or ensemble. For estimate
 
 ##### Inputs
 
-The inputs of the estimate are specified using the `input()` decorator, optionally with a feature type as a parameter. We offer a `FloatFeature(min, max)`, which performs normalization of the inputs, a `CategoricalFeature(enum|list)` for one-hot encoding categorical values, and a `BinaryFeature()` to represent boolean attributes.
+The inputs of the estimate are specified using the `input()` decorator, optionally with a feature type as a parameter. We offer a `NumericFeature(min, max)`, which performs normalization of the inputs, a `CategoricalFeature(enum|list)` for one-hot encoding categorical values, and a `BinaryFeature()` to represent boolean attributes.
 
 Example of inputs for an estimate in a component (continued from earlier):
 
 ```py
 from ml_deeco.estimators import ValueEstimate, NumericFeature, CategoricalFeature
-from ml_deeco.simulation import Agent
+from ml_deeco.simulation import MovingComponent2D
 
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     # create the estimate (as described earlier)
     futureBatteryEstimate = ValueEstimate().inTimeSteps(50)\
@@ -280,7 +282,7 @@ class DroneChargingAssignment(Ensemble):
 The target is specified similarly to the inputs using `target()` decorator. A `Feature` can again be given as a parameter &ndash; this is how classification and regression tasks are distinguished. The feature is then used to set the appropriate number of neurons and the activation function of the last layer of the neural network and the loss function used for training (more details in [Notes to implementation](#notes-to-implementation)).
 
 ```py
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     # create the estimate and inputs as described earlier
     ...
@@ -293,7 +295,7 @@ class Drone(Agent):
 
 ##### Condition for `TimeEstimate`
 
-For the time-to-condition estimate, a condition must be specified instead of the target value. The syntax is again similar &ndash; using the `condition` decorator. If multiple conditions are provided, they are considered in an "and" manner. 
+For the time-to-condition estimate, a condition must be specified instead of the target value. The syntax is again similar &ndash; using the `condition` decorator. If multiple conditions are provided, they are considered in an "and" manner.
 
 ```py
 class DroneChargingAssignment(Ensemble):
@@ -312,7 +314,7 @@ class DroneChargingAssignment(Ensemble):
 Guard functions can be specified using `inputsValid`, `targetsValid` and `conditionValid` decorators to assess the validity of inputs and targets. The data are collected for training only if the guard conditions are satisfied. This can be used for example to prevent collecting data from components which are no longer active.
 
 ```py
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     # create the estimate, inputs and targets as described earlier
     ...
@@ -330,7 +332,7 @@ The `Estimate` object is callable, so the value of the estimate based on the cur
 Example in a component:
 
 ```py
-class Drone(Agent):
+class Drone(MovingComponent2D):
 
     # create the estimate, inputs and targets as described earlier
     ...
@@ -364,15 +366,16 @@ The `ml_deeco.simulation` module offers two functions for running the simulation
 #### `run_simulation`
 
 The `run_simulation(components, ensembles, steps)` function runs the simulation with `components` and `ensembles` for `steps` steps. An optional `stepCallback` can be supplied which is called after each simulation step. It can be used for example to log data from the simulation. The parameters are:
-- list of all components in the system,
-- list of materialized ensembles (in this time step),
-- current time step (int).
+
+* list of all components in the system,
+* list of materialized ensembles (in this time step),
+* current time step (int).
 
 Before running the simulation, the `Estimator`s have to be initialized. The easiest way to do that is by calling the `SIMULATION_GLOBALS.initEstimators()`.
 
 #### `run_experiment`
 
-The `run_experiment` is useful for running the simulation several times with training of the ML models in between. The `iterations` parameter specifies the number of iterations. In each iteration, the simulation is run `simulation` times. After that, the data from all the simulations in the current iteration are used to train the ML model (`Estimator`). The next iteration will use the updated model.
+The `run_experiment` is useful for running the simulation several times with training of the ML models in between. The `iterations` parameter specifies the number of iterations. In each iteration, the simulation is run `simulations` times. After that, the data from all the simulations in the current iteration are used to train the ML model (`Estimator`). The next iteration will use the updated model.
 
 The `prepareSimulation` function is used to obtain the components and ensembles for the simulation (it gets the current iteration and the current simulation as parameters). The simulation is then run using our `run_simulation` function for `steps` steps.
 
@@ -405,5 +408,6 @@ For role-assigned estimates, we compute the estimated values for all potential m
 ## Examples
 
 In the `examples` folder, two example projects are located:
-  * [`simple_example`](examples/simple_example) &ndash; a simple example showing basic usage of the ML-DEECo framework.
-  * [`all_example`](examples/all_example) &ndash; example of all predictions defined in the taxonomy (serves mainly as a test of the implementation).
+
+* [`simple_example`](examples/simple_example) &ndash; a simple example showing basic usage of the ML-DEECo framework.
+* [`all_example`](examples/all_example) &ndash; example of all predictions defined in the taxonomy (serves mainly as a test of the implementation).
