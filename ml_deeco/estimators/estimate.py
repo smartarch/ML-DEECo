@@ -160,16 +160,21 @@ class Estimate(abc.ABC):
         prediction = self.estimator.predict(x)
         return self.generateOutputs(prediction)
 
-    def estimate(self, *args):
+    def estimate(self, *args, ignoreCache=False):
         """
         Computes the estimate (based on the current values of the attributes).
+
+        Parameters
+        ----------
+        ignoreCache : bool
+            Set to True to ignore the cached values (which are used only for role-assigned estimates) and compute the estimate again.
 
         Returns
         -------
         prediction : Any
             The predicted value (if there is only one target), or a dictionary `{ feature_name: predicted_value }` with all targets.
         """
-        if self.estimateCache:  # the cache is non-empty
+        if self.estimateCache and not ignoreCache:  # the cache is non-empty
             ensemble, comp = args
             if comp in self.estimateCache[ensemble]:
                 return self.estimateCache[ensemble][comp]

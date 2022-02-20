@@ -194,8 +194,8 @@ class someOfWithEstimate(someOf):
         if isinstance(sel, list):
             sel = ListWithEstimate(sel)
 
-        def estimate(*args):
-            return self.estimate.estimate(instance, *args)
+        def estimate(*args, ignoreCache=False):
+            return self.estimate.estimate(instance, *args, ignoreCache=ignoreCache)
 
         sel.estimate = estimate
         return sel
@@ -250,8 +250,8 @@ class oneOfWithEstimate(someOfWithEstimate):
         sel = super().get(instance, owner)
         selected = sel[0]
 
-        def estimate(*args):
-            return self.estimate.estimate(instance, *args)
+        def estimate(*args, ignoreCache=False):
+            return self.estimate.estimate(instance, *args, ignoreCache=ignoreCache)
 
         selected.estimate = estimate
         return selected
