@@ -289,6 +289,11 @@ class Ensemble:
                                  if not fldName.startswith('__') and isinstance(fld, someOf)]),
                             key=lambda fld: fld.id)
 
+        for fld in compFields:
+            fld.reset(self)
+        if not self.canMaterialize():
+            return
+
         # select members for the roles
         allOk = True
         for fld in compFields:
@@ -303,6 +308,10 @@ class Ensemble:
             self.materialized = True
                 
         return allOk
+
+    def canMaterialize(self) -> bool:
+        """Assesses whether this ensemble instance can be materialized in this time step."""
+        return True
     
     def actuate(self):
         """The function performed when the ensemble is materialized. To be implemented by the user."""
