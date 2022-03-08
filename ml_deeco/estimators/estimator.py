@@ -5,6 +5,7 @@ import abc
 import os
 from datetime import datetime
 from typing import List
+from collections import namedtuple
 import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
@@ -13,6 +14,9 @@ import seaborn as sns
 from ml_deeco.estimators import Feature, CategoricalFeature, NumericFeature, BinaryFeature, TimeFeature, Estimate, BoundFeature
 from ml_deeco.simulation import SIMULATION_GLOBALS
 from ml_deeco.utils import Log, verbosePrint
+
+
+Data = namedtuple('Data', ['x', 'y'])
 
 
 #########################
@@ -35,15 +39,14 @@ class Estimator(abc.ABC):
         testSplit: float
             The fraction of the data to be used for evaluation.
         printLogs: bool
-        accumulateData: bool
-            If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training.
+        accumulateData: bool or int
+            If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training. If set to an integer `k`, data from the last `k` iterations are used for training (setting this to `1` is thus equivalent to setting it to `False`).
         saveCharts: bool
             If `True`, charts are generated from the evaluation of the model.
         """
         SIMULATION_GLOBALS.estimators.append(self)
 
-        self.x = []
-        self.y = []
+        self.data: List[Data] = []
         if outputFolder is not None:
             os.makedirs(outputFolder, exist_ok=True)
         self._outputFolder = outputFolder
@@ -51,7 +54,10 @@ class Estimator(abc.ABC):
         self._skipEndIteration = skipEndIteration
         self._testSplit = testSplit
         self._printLogs = printLogs
-        self._accumulateData = accumulateData
+        if type(accumulateData) == bool or (type(accumulateData) == int and accumulateData >= 1):
+            self._accumulateData = accumulateData
+        else:
+            raise ValueError("Invalid value for 'accumulateData'")
         self._saveCharts = saveCharts
 
         self._iteration = 0
@@ -106,12 +112,21 @@ class Estimator(abc.ABC):
         self._initialized = True
 
     def collectData(self):
+        iteration_x, iteration_y = [], []
         for estimate in self._estimates:
             x, y = estimate.getData()
-            self.x.extend(x)
-            self.y.extend(y)
+            iteration_x.extend(x)
+            iteration_y.extend(y)
 
-    def dumpData(self, fileName):
+        self.verbosePrint(f"{self.name} ({self.estimatorName}): iteration {self._iteration} collected {len(iteration_x)} records.", 1)
+        self.data.append(Data(iteration_x, iteration_y))
+
+        if type(self._accumulateData) == int:
+            self.data = self.data[-self._accumulateData:]
+        elif not self._accumulateData:
+            self.data = self.data[-1:]
+
+    def saveData(self, fileName):
         dataLogHeader = []
         for featureName, feature, _ in self._inputs:
             dataLogHeader.extend(feature.getHeader(featureName))
@@ -120,8 +135,9 @@ class Estimator(abc.ABC):
 
         dataLog = Log(dataLogHeader)
 
-        for x, y in zip(self.x, self.y):
-            dataLog.register(list(x) + list(y))
+        for data_x, data_y in self.data:
+            for x, y in zip(data_x, data_y):
+                dataLog.register(list(x) + list(y))
 
         dataLog.export(fileName)
 
@@ -269,15 +285,15 @@ class Estimator(abc.ABC):
             return
 
         self.collectData()
-        count = len(self.x)
-        self.verbosePrint(f"{self.name} ({self.estimatorName}): iteration {self._iteration} collected {count} records.", 1)
-        if self._outputFolder is not None:
-            self.dumpData(f"{self._outputFolder}/{self._iteration}-data.csv")
 
+        if self._outputFolder is not None:
+            self.saveData(f"{self._outputFolder}/{self._iteration}-data.csv")
+
+        count = sum((len(d.x) for d in self.data))
         test_size = int(self._testSplit * count)
         if count > 0:
-            x = np.array(self.x)
-            y = np.array(self.y)
+            x = np.concatenate([np.array(d.x) for d in self.data])
+            y = np.concatenate([np.array(d.y) for d in self.data])
 
             if test_size > 0:
                 indices = np.random.permutation(count)
@@ -303,11 +319,6 @@ class Estimator(abc.ABC):
             self.evaluate(train_x, train_y, label="Train")
             if test_size > 0:
                 self.evaluate(test_x, test_y, label="Test")
-
-        # clear the data
-        if not self._accumulateData:
-            self.x = []
-            self.y = []
 
 
 ################
