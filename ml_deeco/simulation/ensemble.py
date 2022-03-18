@@ -30,7 +30,7 @@ class someOf:
 
         self.compClass = compClass
 
-        self.cardinalityFn = None
+        self.cardinalityFn = lambda _ens: (0, None)
         self.selectFn = None
         self.utilityFn = lambda _ens, _comp: 0
 
@@ -136,8 +136,8 @@ class someOf:
             True if role members were selected.
         """
 
-        assert(self.cardinalityFn is not None)
-        assert(self.selectFn is not None)
+        assert (self.cardinalityFn is not None)
+        assert (self.selectFn is not None)
 
         self.selections[instance] = []
 
@@ -145,6 +145,8 @@ class someOf:
         cardinality = self.cardinalityFn(instance)
         if isinstance(cardinality, tuple):
             cardinalityMin, cardinalityMax = cardinality
+            if cardinalityMax is None:
+                cardinalityMax = len(allComponents)
         else:
             cardinalityMin, cardinalityMax = cardinality, cardinality
 
@@ -155,7 +157,8 @@ class someOf:
                 utility, comp = max(sel, key=operator.itemgetter(0))
                 self.selections[instance].append(comp)
                 sel = self.selectComponents(instance, allComponents, otherEnsembles)
-            # Note: unlimited cardinality -> else: break
+            else:
+                break
 
         if len(self.selections[instance]) < cardinalityMin:
             return False
@@ -307,13 +310,13 @@ class Ensemble:
                 fld.reset(self)
         else:
             self.materialized = True
-                
+
         return allOk
 
     def situation(self) -> bool:
         """Assesses whether this ensemble instance can be materialized in this time step."""
         return True
-    
+
     def actuate(self):
         """The function performed when the ensemble is materialized. To be implemented by the user."""
         pass
