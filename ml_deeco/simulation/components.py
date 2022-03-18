@@ -44,3 +44,6 @@ class Component(metaclass=ComponentMeta):
         for estimate in estimates:
             estimate.collectInputs(self)
             estimate.collectTargets(self)
+
+    def __repr__(self) -> str:
+        return self.id
