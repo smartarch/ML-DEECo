@@ -155,6 +155,7 @@ class someOf:
                 utility, comp = max(sel, key=operator.itemgetter(0))
                 self.selections[instance].append(comp)
                 sel = self.selectComponents(instance, allComponents, otherEnsembles)
+            # Note: unlimited cardinality -> else: break
 
         if len(self.selections[instance]) < cardinalityMin:
             return False
@@ -291,7 +292,7 @@ class Ensemble:
 
         for fld in compFields:
             fld.reset(self)
-        if not self.canMaterialize():
+        if not self.situation():
             return
 
         # select members for the roles
@@ -309,7 +310,7 @@ class Ensemble:
                 
         return allOk
 
-    def canMaterialize(self) -> bool:
+    def situation(self) -> bool:
         """Assesses whether this ensemble instance can be materialized in this time step."""
         return True
     
