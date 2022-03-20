@@ -1,6 +1,6 @@
 import operator
 from collections import defaultdict
-from typing import Dict, Any, TYPE_CHECKING, Union, Callable, Tuple, List, Type
+from typing import Dict, Any, TYPE_CHECKING, Union, Callable, Tuple, List, Type, Iterable, Sized
 
 from ml_deeco.estimators.estimate import TimeEstimate, ListWithEstimate, Estimate, ValueEstimate
 
@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from ml_deeco.simulation import Component
 
 
-class someOf:
+class someOf(Iterable, Sized):
     """
     Declaration of a dynamic ensemble role.
     """
@@ -46,6 +46,12 @@ class someOf:
         """Returns the members for the role."""
         return self.selections[instance]
 
+    def __iter__(self):
+        raise NotImplementedError("This should not be called. Use the 'someOf' as a property and work with the returned list.")
+
+    def __len__(self) -> int:
+        raise NotImplementedError("This should not be called. Use the 'someOf' as a property and work with the returned list.")
+
     def cardinality(self, cardinalityFn: Callable[['Ensemble'], Union[int, Tuple[int, int]]]):
         """
         Define the cardinality function for the role. Use this as a decorator.
@@ -58,7 +64,7 @@ class someOf:
         self.cardinalityFn = cardinalityFn
         return self
 
-    def select(self, selectFn: Callable[['Ensemble', 'Component', List['Ensemble']], bool]):
+    def select(self, selectFn: Callable[['Ensemble', 'Component', Iterable['Ensemble']], bool]):
         """
         Define the select predicate for the role. Use this as a decorator.
 
