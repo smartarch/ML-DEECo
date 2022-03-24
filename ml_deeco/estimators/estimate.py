@@ -8,7 +8,7 @@ from typing import Callable, List, TYPE_CHECKING, Optional, Dict
 
 import numpy as np
 
-from ml_deeco.estimators import Feature, TimeFeature
+from ml_deeco.estimators import Feature, TimeFeature, NumericFeature
 from ml_deeco.simulation import SIMULATION_GLOBALS
 
 if TYPE_CHECKING:
@@ -197,6 +197,8 @@ class Estimate(abc.ABC):
         """Generates the inputs record for the `Estimator.predict` function."""
         record = []
         for name, feature, function in self.inputs:
+            if function is None:
+                continue
             value = function(*args)
             value = feature.preprocess(value)
             record.append(value)
@@ -281,6 +283,10 @@ class ValueEstimate(Estimate):
     Implementation of the value estimate (both regression and classification). Predicts a future value based on current observations.
     """
 
+    def __init__(self):
+        super().__init__()
+        self.timeStepsRange = None
+
     def prepare(self):
         # nothing needed here
         pass
@@ -291,6 +297,49 @@ class ValueEstimate(Estimate):
         self.inputsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
         self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep - timeSteps)
         return self
+
+    def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
+        """TODO: docs   Automatically collect the data with fixed time difference between inputs and targets."""
+        timeStepsStep = int(max(1 // trainingPercentage, 1))
+        self.timeStepsRange = (minTimeSteps, maxTimeSteps, timeStepsStep)
+
+        self.inputs.insert(0, BoundFeature("time", NumericFeature(minTimeSteps, maxTimeSteps), None))
+        self.targetsGuards.append(lambda *args: SIMULATION_GLOBALS.currentTimeStep >= minTimeSteps)
+        self.inputsIdFunction = lambda *args, time: (*args, SIMULATION_GLOBALS.currentTimeStep + time)
+        self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
+        return self
+
+    def collectInputs(self, *args, **kwargs):
+        if self.timeStepsRange:
+            self.collectInputsRange(*args)
+        else:
+            super().collectInputs(*args, **kwargs)
+
+    def collectInputsRange(self, *args):
+        """Collects the inputs for training."""
+        for f in self.inputsGuards:
+            if not f(*args):
+                return
+
+        for time in range(*self.timeStepsRange):
+            recordId = self.inputsIdFunction(*args, time=time)
+            x = self.generateRecord(*args, time)
+
+            extra = {
+                name: function(*args)
+                for name, _, function in self.extras
+            }
+
+            self.dataCollector.collectRecordInputs(recordId, x, extra)
+
+    def generateRecord(self, *args):
+        """Generates the inputs record for the `Estimator.predict` function."""
+        if self.timeStepsRange:
+            *args, time = args
+            time = np.array([time])
+            return np.concatenate([time, super().generateRecord(*args)])
+        else:
+            return super().generateRecord(*args)
 
     def target(self, feature: Optional[Feature] = None):
         """Defines a target value."""
