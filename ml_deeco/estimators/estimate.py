@@ -77,13 +77,17 @@ class Estimate(abc.ABC):
     def __init__(self, **dataCollectorKwargs):
         # noinspection PyTypeChecker
         self.estimator: 'Estimator' = None
+
         self.inputs: List[BoundFeature] = []
         self.extras: List[BoundFeature] = []
         self.targets: List[BoundFeature] = []
+
         self.inputsIdFunction = lambda *args: (*args,)
         self.targetsIdFunction = lambda *args: (*args,)
         self.inputsGuards: List[Callable] = []
         self.targetsGuards: List[Callable] = []
+
+        self.baseline = lambda *args: 0
         self.dataCollector = DataCollector(**dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 
@@ -91,6 +95,11 @@ class Estimate(abc.ABC):
         """Assigns an estimator to the estimate."""
         self.estimator = estimator
         estimator.assignEstimate(self)
+        return self
+
+    def withBaseline(self, baseline: Callable):
+        """Set the baseline function which is used before the first training."""
+        self.baseline = baseline
         return self
 
     @abc.abstractmethod
@@ -156,6 +165,9 @@ class Estimate(abc.ABC):
 
     def _estimate(self, *args):
         """Helper function to compute the estimate."""
+        if SIMULATION_GLOBALS.useBaselines:
+            return self.baseline(*args)
+
         x = self.generateRecord(*args)
         prediction = self.estimator.predict(x)
         return self.generateOutputs(prediction)
@@ -185,13 +197,19 @@ class Estimate(abc.ABC):
 
     def cacheEstimates(self, ensemble, components):
         """Computes the estimates for all components in a batch at the same time and caches the results. Use this only for estimates assigned to ensemble roles."""
-        records = np.array([self.generateRecord(ensemble, comp) for comp in components])
-        predictions = self.estimator.predictBatch(records)
+        if SIMULATION_GLOBALS.useBaselines:
+            self.estimateCache[ensemble] = {
+                comp: self.baseline(ensemble, comp)
+                for comp in components
+            }
+        else:
+            records = np.array([self.generateRecord(ensemble, comp) for comp in components])
+            predictions = self.estimator.predictBatch(records)
 
-        self.estimateCache[ensemble] = {
-            comp: self.generateOutputs(prediction)
-            for comp, prediction in zip(components, predictions)
-        }
+            self.estimateCache[ensemble] = {
+                comp: self.generateOutputs(prediction)
+                for comp, prediction in zip(components, predictions)
+            }
 
     def generateRecord(self, *args):
         """Generates the inputs record for the `Estimator.predict` function."""

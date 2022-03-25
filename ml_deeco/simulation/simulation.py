@@ -19,6 +19,7 @@ class SimulationGlobals:
             raise RuntimeError("Do not create a new instance of the SimulationGlobals. Use the SIMULATION_GLOBALS global variable instead.")
         self.estimators = []
         self.currentTimeStep = 0
+        self.useBaselines = True  # TODO: documentation
 
     def initEstimators(self):
         """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
@@ -183,3 +184,5 @@ def run_experiment(
 
         if iterationCallback:
             iterationCallback(iteration)
+
+        SIMULATION_GLOBALS.useBaselines = False

@@ -188,6 +188,11 @@ class someOfWithEstimate(someOf):
         self.estimate.using(estimator)
         return self
 
+    def withBaseline(self, baseline: Callable):
+        """Set the baseline function which is used before the first training."""
+        self.estimate.baseline = baseline
+        return self
+
     def inTimeSteps(self, timeSteps):
         """Automatically collect the data with fixed time difference between inputs and targets."""
         self.estimate.inTimeSteps(timeSteps)
