@@ -211,7 +211,8 @@ class Estimator(abc.ABC):
             for t, p in zip(y_true, y_pred):
                 dataLog.register(list(t) + list(p))
 
-            dataLog.export(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.csv")
+            if self._outputFolder is not None:
+                dataLog.export(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.csv")
 
             if type(feature) == BinaryFeature:
                 return self.evaluate_binary_classification(label, targetName, y_pred, y_true)

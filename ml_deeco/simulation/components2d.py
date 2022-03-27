@@ -91,7 +91,7 @@ class MovingComponent2D(StationaryComponent2D):
         The speed of the agent (movement per step).
     """
 
-    def __init__(self, location, speed):
+    def __init__(self, location, speed=1):
         """
         Parameters
         ----------

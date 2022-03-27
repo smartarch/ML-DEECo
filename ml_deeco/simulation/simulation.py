@@ -70,7 +70,7 @@ def actuate_components(components):
     """
     for component in components:
         component.actuate()
-        verbosePrint(f"{component}", 4)
+        # verbosePrint(f"{component}", 4)
     for component in components:
         component.collectEstimatesData()
 
