@@ -204,6 +204,22 @@ class someOfWithEstimate(someOf):
         self.estimate.inTimeSteps(timeSteps)
         return self
 
+    def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
+        """
+        Automatically collect data with a variable time difference (from a specified interval) between inputs and targets.
+
+        Parameters
+        ----------
+        minTimeSteps : int
+            Minimal allowed difference of time steps for collecting data.
+        maxTimeSteps : int
+            Maximal allowed difference of time steps for collecting data.
+        trainingPercentage : float
+            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger than 1 is used to select only part of the data for training.
+        """
+        self.estimate.inTimeStepsRange(minTimeSteps, maxTimeSteps, trainingPercentage)
+        return self
+
     def get(self, instance, owner):
         sel = super().get(instance, owner)
         if isinstance(sel, list):

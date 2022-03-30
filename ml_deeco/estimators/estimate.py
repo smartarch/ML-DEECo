@@ -296,29 +296,42 @@ class Estimate(abc.ABC):
         return x, y
 
 
-class ValueEstimate(Estimate):
+class ValueEstimate(Estimate, abc.ABC):
     """
     Implementation of the value estimate (both regression and classification). Predicts a future value based on current observations.
     """
 
     def __init__(self):
         super().__init__()
-        self.timeStepsRange = None
 
     def prepare(self):
         # nothing needed here
         pass
 
     def inTimeSteps(self, timeSteps):
-        """Automatically collect the data with fixed time difference between inputs and targets."""
+        """Automatically collect data with fixed time difference between inputs and targets."""
         self.targetsGuards.append(lambda *args: SIMULATION_GLOBALS.currentTimeStep >= timeSteps)
         self.inputsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
         self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep - timeSteps)
         return self
 
     def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
-        """TODO: docs   Automatically collect the data with fixed time difference between inputs and targets."""
+        """
+        Automatically collect data with a variable time difference (from a specified interval) between inputs and targets.
+
+        Parameters
+        ----------
+        minTimeSteps : int
+            Minimal allowed difference of time steps for collecting data.
+        maxTimeSteps : int
+            Maximal allowed difference of time steps for collecting data.
+        trainingPercentage : float
+            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger than 1 is used to select only part of the data for training.
+        """
+        self.__class__ = ValueEstimateRange  # use the ValueEstimateRange implementation instead of ValueEstimate
+
         timeStepsStep = int(max(1 // trainingPercentage, 1))
+        # noinspection PyAttributeOutsideInit
         self.timeStepsRange = (minTimeSteps, maxTimeSteps, timeStepsStep)
 
         self.inputs.insert(0, BoundFeature("time", NumericFeature(minTimeSteps, maxTimeSteps), None))
@@ -327,13 +340,34 @@ class ValueEstimate(Estimate):
         self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
         return self
 
-    def collectInputs(self, *args, **kwargs):
-        if self.timeStepsRange:
-            self.collectInputsRange(*args)
-        else:
-            super().collectInputs(*args, **kwargs)
+    def target(self, feature: Optional[Feature] = None):
+        """Defines a target value."""
+        if feature is None:
+            feature = Feature()
 
-    def collectInputsRange(self, *args):
+        def addTargetFunction(function):
+            self._addTarget(function.__name__, feature, function)
+            return function
+
+        return addTargetFunction
+
+    def targetsValid(self, function):
+        """Guard for detecting whether the targets are valid and can be used for training. Use this as a decorator."""
+        self.targetsGuards.append(function)
+        return function
+
+
+class ValueEstimateRange(ValueEstimate):
+    """
+    Implementation of the value estimate (both regression and classification) with a range of time differences between inputs and outputs.
+    This class should not be used directly and should only be obtained using the 'ValueEstimate().inTimeStepsRange(...)' call.
+    """
+
+    # noinspection PyMissingConstructor
+    def __init__(self):
+        raise SyntaxError("Use 'ValueEstimate().inTimeStepsRange(...)' instead.")
+
+    def collectInputs(self, *args, **kwargs):
         """Collects the inputs for training."""
         for f in self.inputsGuards:
             if not f(*args):
@@ -352,28 +386,12 @@ class ValueEstimate(Estimate):
 
     def generateRecord(self, *args):
         """Generates the inputs record for the `Estimator.predict` function."""
-        if self.timeStepsRange:
-            *args, time = args
-            time = np.array([time])
-            return np.concatenate([time, super().generateRecord(*args)])
-        else:
-            return super().generateRecord(*args)
+        *args, time = args
+        time = np.array([time])
+        return np.concatenate([time, super().generateRecord(*args)])
 
-    def target(self, feature: Optional[Feature] = None):
-        """Defines a target value."""
-        if feature is None:
-            feature = Feature()
-
-        def addTargetFunction(function):
-            self._addTarget(function.__name__, feature, function)
-            return function
-
-        return addTargetFunction
-
-    def targetsValid(self, function):
-        """Guard for detecting whether the targets are valid and can be used for training. Use this as a decorator."""
-        self.targetsGuards.append(function)
-        return function
+    def cacheEstimates(self, ensemble, components):
+        pass  # caching is not applicable for time steps range
 
 
 class TimeEstimate(Estimate):
