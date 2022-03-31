@@ -48,7 +48,7 @@ class DataCollector:
             else:
                 records[0] = (x, extra)
 
-    def collectRecordTargets(self, recordId, y):
+    def collectRecordTargets(self, recordId, y, recordGuards, *args):
         if recordId not in self._records:
             # the record with corresponding ID doesn't exist, the data probably weren't valid at the time
             return
@@ -57,11 +57,15 @@ class DataCollector:
         del self._records[recordId]
 
         for x, extra in records:
-            self.x.append(x)
             if callable(y):
-                self.y.append(y(x, extra))
-            else:
-                self.y.append(y)
+                y = y(x, extra)
+
+            for guard in recordGuards:
+                if not guard(*args, x, y, extra):
+                    return
+
+            self.x.append(x)
+            self.y.append(y)
 
     def clear(self):
         self.x = []
@@ -86,6 +90,7 @@ class Estimate(abc.ABC):
         self.targetsIdFunction = lambda *args: (*args,)
         self.inputsGuards: List[Callable] = []
         self.targetsGuards: List[Callable] = []
+        self.recordGuards: List[Callable] = []
 
         self.baseline = lambda *args: 0
         self.dataCollector = DataCollector(**dataCollectorKwargs)
@@ -150,6 +155,11 @@ class Estimate(abc.ABC):
     def inputsValid(self, function):
         """Guard for detecting whether the inputs are valid and can be used for training. Use this as a decorator."""
         self.inputsGuards.append(function)
+        return function
+
+    def recordValid(self, function):
+        """Guard for detecting whether the combination of inputs and outputs are valid and can be used for training. Use this as a decorator."""
+        self.recordGuards.append(function)
         return function
 
     def _addInput(self, name: str, feature: Feature, function: Callable):
@@ -286,7 +296,7 @@ class Estimate(abc.ABC):
         y = self.generateTargets(*args)
 
         recordId = id if id is not None else self.targetsIdFunction(*args)
-        self.dataCollector.collectRecordTargets(recordId, y)
+        self.dataCollector.collectRecordTargets(recordId, y, self.recordGuards, *args)
 
     def getData(self, clear=True):
         """Gets (and optionally clears) all collected data."""
