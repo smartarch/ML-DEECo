@@ -26,29 +26,30 @@ class DataCollectorMode(Enum):
 
 class DataCollector:
 
-    def __init__(self, begin=DataCollectorMode.All):
+    def __init__(self, estimate, begin=DataCollectorMode.All):
+        self.estimate = estimate
         self._records = {}
         self._begin = begin
         self.x = []
         self.y = []
 
-    def collectRecordInputs(self, recordId, x, extra=None, force_replace=False):
+    def collectRecordInputs(self, recordId, inputs, extra=None, force_replace=False):
         if recordId not in self._records or force_replace:
             self._records[recordId] = []
 
         records = self._records[recordId]
         if self._begin == DataCollectorMode.All:
-            records.append((x, extra))
+            records.append((inputs, extra))
         elif self._begin == DataCollectorMode.First:
             if len(records) == 0:
-                records.append((x, extra))
+                records.append((inputs, extra))
         elif self._begin == DataCollectorMode.Last:
             if len(records) == 0:
-                records.append((x, extra))
+                records.append((inputs, extra))
             else:
-                records[0] = (x, extra)
+                records[0] = (inputs, extra)
 
-    def collectRecordTargets(self, recordId, y, recordGuards, *args):
+    def collectRecordTargets(self, recordId, targets, recordGuards, *args):
         if recordId not in self._records:
             # the record with corresponding ID doesn't exist, the data probably weren't valid at the time
             return
@@ -56,13 +57,19 @@ class DataCollector:
         records = self._records[recordId]
         del self._records[recordId]
 
-        for x, extra in records:
-            if callable(y):
-                y = y(x, extra)
+        for inputs, extra in records:
+            for name in targets:
+                if callable(targets[name]):
+                    targets[name] = targets[name](inputs, extra)
 
             for guard in recordGuards:
-                if not guard(*args, x, y, extra):
+                guardParamCount = guard.__code__.co_argcount
+                guardParams = [*args, inputs, targets, extra][:guardParamCount]
+                if not guard(*guardParams):
                     return
+
+            x = self.estimate.preprocessInputs(inputs)
+            y = self.estimate.preprocessTargets(targets)
 
             self.x.append(x)
             self.y.append(y)
@@ -93,7 +100,7 @@ class Estimate(abc.ABC):
         self.recordGuards: List[Callable] = []
 
         self.baseline = lambda *args: 0
-        self.dataCollector = DataCollector(**dataCollectorKwargs)
+        self.dataCollector = DataCollector(self, **dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 
     def using(self, estimator: 'Estimator'):
@@ -221,16 +228,27 @@ class Estimate(abc.ABC):
                 for comp, prediction in zip(components, predictions)
             }
 
-    def generateRecord(self, *args):
-        """Generates the inputs record for the `Estimator.predict` function."""
+    def generateInputs(self, *args) -> Dict:
+        """Generates the inputs record."""
+        return {
+            name: function(*args)
+            for name, _, function in self.inputs
+            if function is not None
+        }
+
+    def preprocessInputs(self, inputs: Dict) -> np.ndarray:
+        """Preprocesses the inputs record for the `Estimator.predict` function."""
         record = []
-        for name, feature, function in self.inputs:
-            if function is None:
+        for name, feature, _ in self.inputs:
+            if name not in inputs:
                 continue
-            value = function(*args)
+            value = inputs[name]
             value = feature.preprocess(value)
             record.append(value)
         return np.concatenate(record)
+
+    def generateRecord(self, *args):
+        return self.preprocessInputs(self.generateInputs(*args))
 
     def generateOutputs(self, prediction):
         """Generates the outputs from the `Estimator.predict` prediction."""
@@ -261,14 +279,14 @@ class Estimate(abc.ABC):
 
     # data collection
 
-    def collectInputs(self, *args, x=None, id=None):
+    def collectInputs(self, *args, inputs=None, id=None):
         """Collects the inputs for training."""
         for f in self.inputsGuards:
             if not f(*args):
                 return
 
-        if x is None:
-            x = self.generateRecord(*args)
+        if inputs is None:
+            inputs = self.generateInputs(*args)
 
         extra = {
             name: function(*args)
@@ -276,13 +294,20 @@ class Estimate(abc.ABC):
         }
 
         recordId = id if id is not None else self.inputsIdFunction(*args)
-        self.dataCollector.collectRecordInputs(recordId, x, extra)
+        self.dataCollector.collectRecordInputs(recordId, inputs, extra)
 
-    def generateTargets(self, *args):
-        """Generates the targets record for the training of `Estimator`."""
+    def generateTargets(self, *args) -> Dict:
+        """Generates the targets record."""
+        return {
+            name: function(*args)
+            for name, _, function in self.targets
+        }
+
+    def preprocessTargets(self, targets: Dict) -> np.ndarray:
+        """Preprocesses the targets record for the training of `Estimator`."""
         record = []
-        for name, feature, function in self.targets:
-            value = function(*args)
+        for name, feature, _ in self.targets:
+            value = targets[name]
             value = feature.preprocess(value)
             record.append(value)
         return np.concatenate(record)
@@ -293,10 +318,10 @@ class Estimate(abc.ABC):
             if not f(*args):
                 return
 
-        y = self.generateTargets(*args)
+        targets = self.generateTargets(*args)
 
         recordId = id if id is not None else self.targetsIdFunction(*args)
-        self.dataCollector.collectRecordTargets(recordId, y, self.recordGuards, *args)
+        self.dataCollector.collectRecordTargets(recordId, targets, self.recordGuards, *args)
 
     def getData(self, clear=True):
         """Gets (and optionally clears) all collected data."""
@@ -385,20 +410,21 @@ class ValueEstimateRange(ValueEstimate):
 
         for time in range(*self.timeStepsRange):
             recordId = self.inputsIdFunction(*args, time=time)
-            x = self.generateRecord(*args, time)
+            inputs = self.generateInputs(*args, time)
 
             extra = {
                 name: function(*args)
                 for name, _, function in self.extras
             }
 
-            self.dataCollector.collectRecordInputs(recordId, x, extra)
+            self.dataCollector.collectRecordInputs(recordId, inputs, extra)
 
-    def generateRecord(self, *args):
-        """Generates the inputs record for the `Estimator.predict` function."""
+    def generateInputs(self, *args):
+        """Generates the inputs record."""
         *args, time = args
-        time = np.array([time])
-        return np.concatenate([time, super().generateRecord(*args)])
+        inputs = super().generateInputs(*args)
+        inputs["time"] = time
+        return inputs
 
     def cacheEstimates(self, ensemble, components):
         pass  # caching is not applicable for time steps range
@@ -439,11 +465,13 @@ class TimeEstimate(Estimate):
     def generateTargets(self, *args):
         currentTimeStep = self.timeFunc(*args)
 
-        def timeDifference(x, extra):
+        def timeDifference(inputs, extra):
             difference = currentTimeStep - extra['time']
-            return np.array([difference])
+            return difference
 
-        return timeDifference
+        return {
+            "time": timeDifference
+        }
 
 
 class ListWithEstimate(list):
