@@ -33,6 +33,7 @@ class someOf(Iterable, Sized):
         self.cardinalityFn = lambda _ens: (0, None)
         self.selectFn = None
         self.utilityFn = lambda _ens, _comp: 0
+        self.runSelectOnlyOnce = False  # if True, selection will run only once and select all the components
 
         self.selections: Dict[Ensemble, Any] = defaultdict(lambda: None)
 
@@ -80,6 +81,23 @@ class someOf(Iterable, Sized):
         self.selectFn = selectFn
         return self
 
+    def selectAll(self, selectFn: Callable[['Ensemble', 'Component', Iterable['Ensemble']], bool]):
+        """
+        Define the select predicate for the role. Use this as a decorator.
+
+        Parameters
+        ----------
+        selectFn
+            The select predicate of the role. The parameters of the function are:
+                - the ensemble instance (self),
+                - the component instance (only components of type `compClass` specified in the `__init__` are considered),
+                - the list of already materialized ensembles.
+            If the predicate returns `True`, the component can be selected for the role.
+        """
+        self.selectFn = selectFn
+        self.runSelectOnlyOnce = True
+        return self
+
     def utility(self, utilityFn: Callable[['Ensemble', 'Component'], float]):
         """
         Define the utility function for the role. Use this as a decorator.
@@ -100,6 +118,7 @@ class someOf(Iterable, Sized):
     def reset(self, instance):
         self.selections[instance] = None
 
+    # TODO: we can cache this inside the run_simulation and use allComponents of type Dict[ComponentType, List[Component]]
     def filterComponentsByType(self, instance, allComponents):
         return [comp for comp in allComponents if
                 isinstance(comp, self.compClass)]
@@ -158,13 +177,17 @@ class someOf(Iterable, Sized):
 
         # perform the selection
         sel = self.selectComponents(instance, allComponents, otherEnsembles)
-        for idx in range(cardinalityMax):
-            if len(sel) > 0:
-                utility, comp = max(sel, key=operator.itemgetter(0))
-                self.selections[instance].append(comp)
-                sel = self.selectComponents(instance, allComponents, otherEnsembles)
-            else:
-                break
+        if self.runSelectOnlyOnce:
+            sel = sorted(sel, key=operator.itemgetter(0))
+            self.selections[instance] = [c for u, c in sel[:cardinalityMax]]
+        else:
+            for idx in range(cardinalityMax):
+                if len(sel) > 0:
+                    utility, comp = max(sel, key=operator.itemgetter(0))
+                    self.selections[instance].append(comp)
+                    sel = self.selectComponents(instance, allComponents, otherEnsembles)
+                else:
+                    break
 
         if len(self.selections[instance]) < cardinalityMin:
             return False
