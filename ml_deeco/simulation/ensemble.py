@@ -17,12 +17,14 @@ class someOf(Iterable, Sized):
     # used for generating IDs
     counter = 0
 
-    def __init__(self, compClass: Type['Component']):
+    def __init__(self, compClass: Type['Component'], selectedAllAtOnce=False):
         """
         Parameters
         ----------
         compClass
             Only components of this type can become members of this role.
+        selectedAllAtOnce
+            If False, the members are selected one at the time. If True, selection will run only once and select all the members are selected simultaneously.
         """
         # the id is used for sorting - the roles are evaluated in the same order they are defined
         self.id = someOf.counter
@@ -33,7 +35,7 @@ class someOf(Iterable, Sized):
         self.cardinalityFn = lambda _ens: (0, None)
         self.selectFn = None
         self.utilityFn = lambda _ens, _comp: 0
-        self.runSelectOnlyOnce = False  # if True, selection will run only once and select all the components
+        self.runSelectOnlyOnce = selectedAllAtOnce
 
         self.selections: Dict[Ensemble, Any] = defaultdict(lambda: None)
 
@@ -79,23 +81,6 @@ class someOf(Iterable, Sized):
             If the predicate returns `True`, the component can be selected for the role.
         """
         self.selectFn = selectFn
-        return self
-
-    def selectAll(self, selectFn: Callable[['Ensemble', 'Component', Iterable['Ensemble']], bool]):
-        """
-        Define the select predicate for the role. Use this as a decorator.
-
-        Parameters
-        ----------
-        selectFn
-            The select predicate of the role. The parameters of the function are:
-                - the ensemble instance (self),
-                - the component instance (only components of type `compClass` specified in the `__init__` are considered),
-                - the list of already materialized ensembles.
-            If the predicate returns `True`, the component can be selected for the role.
-        """
-        self.selectFn = selectFn
-        self.runSelectOnlyOnce = True
         return self
 
     def utility(self, utilityFn: Callable[['Ensemble', 'Component'], float]):
