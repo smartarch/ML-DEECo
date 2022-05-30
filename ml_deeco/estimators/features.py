@@ -1,7 +1,7 @@
 import enum
 from typing import Union, List, Type
 import numpy as np
-import tensorflow as tf
+import tensorflow as tf  # TODO: remove (and replace with numpy)
 
 
 class Feature:

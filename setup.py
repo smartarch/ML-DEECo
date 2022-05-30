@@ -23,7 +23,7 @@ setuptools.setup(
     install_requires=[
         "numpy>=1.21.3",
         "seaborn>=0.11.1",
-        "tensorflow>=2.5.0",
+        "tensorflow>=2.5.0",  # TODO: remove
         "matplotlib>=3.5.1",
     ],
 )
