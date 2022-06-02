@@ -56,7 +56,7 @@ class CategoricalFeature(Feature):
             index = int(value)
         else:
             index = self.categories.index(value)
-        return one_hot(index, self.numItems)
+        return self.one_hot(index, self.numItems)
 
     def postprocess(self, value):
         if self.isEnum():
