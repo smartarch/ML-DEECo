@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Optional, Callable, List, Tuple, TYPE_CHECKING
 
-from ml_deeco.utils import verbosePrint
-
+from ml_deeco.utils import verbosePrint, readYaml, Validators
 if TYPE_CHECKING:
     from ml_deeco.simulation import Ensemble, Component
 
+from pathlib import Path
 
 class SimulationGlobals:
     """
@@ -31,23 +31,71 @@ SIMULATION_GLOBALS = SimulationGlobals()
 
 class Simulation:
     def __init__ (self,        
-        iterations: int,
-        simulations: int,
         prepareSimulation: Callable[[int, int], Tuple[List['Component'], List['Ensemble']]],
         prepareIteration: Optional[Callable[[int], None]] = None,
         iterationCallback: Optional[Callable[[int], None]] = None,
         simulationCallback: Optional[Callable[[List['Component'], List['Ensemble'], int, int], None]] = None,
-        stepCallback: Optional[Callable[[List['Component'], List['Ensemble'], int], None]] = None
-        ):
+        stepCallback: Optional[Callable[[List['Component'], List['Ensemble'], int], None]] = None,
+        iterations: int = 0,
+        simulations: int = 0,
+        configFile: str = None,
+        baseFolder: Path = None ):
 
-        self.iterations = iterations
-        self.simulations = simulations
         self.prepareSimulation = prepareSimulation
         self.prepareIteration = prepareIteration
         self.iterationCallback = iterationCallback
         self.simulationCallback = simulationCallback
         self.stepCallback = stepCallback
+        
+        self.iterations = iterations
+        self.simulations = simulations
+        self.estimators = {}
+        self.baseFolder = baseFolder 
 
+        if configFile is not None:
+            self.processConfigFile(configFile)
+
+
+    def processConfigFile(self, configFile):
+        configDict = readYaml(configFile)
+
+        for intArgument in ['iterations','simulations']:
+            if intArgument in configDict:
+                Validators.validateType(
+                    configDict[intArgument],
+                    int, 
+                    f"The {intArgument} must be an integer")
+
+
+            if configDict[intArgument]>0:
+                self.__dict__[intArgument] = configDict[intArgument]
+        
+        if 'estimators' in configDict:
+            for estimatorName, estimator in configDict['estimators'].items():
+                className = estimator['class']
+                constructorArgs = estimator['args']
+                components = className.split('.')
+                module = __import__('.'.join(components[:-1]))
+                for component in components[1:]:
+                    module = getattr(module, component)
+                classCreator = module
+                if classCreator is None:
+                    raise RuntimeError(f"Class {className} not found.")
+ 
+            
+                # create instance
+                if constructorArgs and isinstance(constructorArgs, dict):
+                    constructorArgs['baseFolder']=self.baseFolder
+                    obj = classCreator(**constructorArgs)
+                # elif constructorArgs and isinstance(constructorArgs, list):
+                #     obj = classCreator(*constructorArgs)
+                # else:
+                #     obj = classCreator()
+                
+                self.__dict__[estimatorName] = obj
+        
+
+        
 
     def materialize_ensembles(self,components, ensembles):
         """
@@ -89,7 +137,7 @@ class Simulation:
         """
         for component in components:
             component.actuate()
-            # verbosePrint(f"{component}", 4)
+
         for component in components:
             component.collectEstimatesData()
 
@@ -98,8 +146,7 @@ class Simulation:
         self,
         steps: int,
         components: List['Component'],
-        ensembles: List['Ensemble'],
-    ):
+        ensembles: List['Ensemble']):
         """
         Runs the simulation with `components` and `ensembles` for `steps` steps.
 
@@ -130,7 +177,8 @@ class Simulation:
                 self.stepCallback(components, materializedEnsembles, step)
 
 
-    def run_experiment(self, steps: int):
+    def run_experiment(self,steps: int):
+
         """
         Runs `iterations` iteration of the experiment. Each iteration consist of running the simulation `simulations` times (each simulation is run for `steps` steps) and then performing training of the Estimator (ML model).
 
