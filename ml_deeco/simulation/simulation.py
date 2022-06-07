@@ -7,27 +7,27 @@ if TYPE_CHECKING:
 
 from pathlib import Path
 
-class SimulationGlobals:
-    """
-    Storage for the global simulation data such as a list of all estimators and the current time step.
+# class SimulationGlobals:
+#     """
+#     Storage for the global simulation data such as a list of all estimators and the current time step.
 
-    This simplifies the implementation as it allows for instance the TimeEstimate to access the current time step of the simulation.
-    """
+#     This simplifies the implementation as it allows for instance the TimeEstimate to access the current time step of the simulation.
+#     """
 
-    def __init__(self):
-        if 'SIMULATION_GLOBALS' in locals():
-            raise RuntimeError("Do not create a new instance of the SimulationGlobals. Use the SIMULATION_GLOBALS global variable instead.")
-        self.estimators = []
-        self.currentTimeStep = 0
-        self.useBaselines = True  # TODO: documentation
+#     def __init__(self):
+#         if 'SIMULATION_GLOBALS' in locals():
+#             raise RuntimeError("Do not create a new instance of the SimulationGlobals. Use the SIMULATION_GLOBALS global variable instead.")
+#         self.estimators = []
+#         self.currentTimeStep = 0
+#         self.useBaselines = True  # TODO: documentation
 
-    def initEstimators(self):
-        """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
-        for est in self.estimators:
-            est.init()
+#     def initEstimators(self):
+#         """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
+#         for est in self.estimators:
+#             est.init()
 
 
-SIMULATION_GLOBALS = SimulationGlobals()
+# SIMULATION_GLOBALS = SimulationGlobals()
 
 class Simulation:
     def __init__ (self,        
@@ -49,9 +49,11 @@ class Simulation:
         
         self.iterations = iterations
         self.simulations = simulations
-        self.estimators = {}
+        self.estimators = []
+        self.currentTimeStep = 0
         self.baseFolder = baseFolder 
-
+        self.useBaselines = True
+        
         if configFile is not None:
             self.processConfigFile(configFile)
 
@@ -73,7 +75,7 @@ class Simulation:
         if 'estimators' in configDict:
             for estimatorName, estimator in configDict['estimators'].items():
                 className = estimator['class']
-                constructorArgs = estimator['args']
+                constructorArgs = estimator['args'] if estimator['args'] is not None else {}
                 components = className.split('.')
                 module = __import__('.'.join(components[:-1]))
                 for component in components[1:]:
@@ -81,20 +83,22 @@ class Simulation:
                 classCreator = module
                 if classCreator is None:
                     raise RuntimeError(f"Class {className} not found.")
- 
-            
-                # create instance
-                if constructorArgs and isinstance(constructorArgs, dict):
-                    constructorArgs['baseFolder']=self.baseFolder
-                    obj = classCreator(**constructorArgs)
-                # elif constructorArgs and isinstance(constructorArgs, list):
-                #     obj = classCreator(*constructorArgs)
-                # else:
-                #     obj = classCreator()
                 
+                constructorArgs = {
+                    **constructorArgs,
+                    'baseFolder':self.baseFolder,
+                    'simulation': self,
+                }
+
+                obj = classCreator(**constructorArgs)
                 self.__dict__[estimatorName] = obj
+                self.estimators.append(obj)
         
 
+    def initEstimators(self):
+        """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
+        for est in self.estimators:
+            est.init()
         
 
     def materialize_ensembles(self,components, ensembles):
@@ -168,7 +172,7 @@ class Simulation:
         for step in range(steps):
 
             verbosePrint(f"Step {step + 1}:", 3)
-            SIMULATION_GLOBALS.currentTimeStep = step
+            self.currentTimeStep = step
 
             materializedEnsembles = self.materialize_ensembles(components, ensembles)
             self.actuate_components(components)
@@ -220,7 +224,7 @@ class Simulation:
                 - current time step (int).
         """
 
-        SIMULATION_GLOBALS.initEstimators()
+        self.initEstimators()
 
         for iteration in range(self.iterations):
             verbosePrint(f"Iteration {iteration + 1} started at {datetime.now()}:", 1)
@@ -237,10 +241,10 @@ class Simulation:
                 if self.simulationCallback is not None:
                     self.simulationCallback(components, ensembles, iteration, simulation)
 
-            for estimator in SIMULATION_GLOBALS.estimators:
+            for estimator in self.estimators:
                 estimator.endIteration()
 
             if self.iterationCallback is not None:
                 self.iterationCallback(iteration)
 
-            SIMULATION_GLOBALS.useBaselines = False
+            self.useBaselines = False
