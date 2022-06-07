@@ -15,8 +15,11 @@ class LinearRegressionEstimator(Estimator):
         super().__init__(**kwargs)
         self._model = linear_model.LinearRegression()
 
-    def train(self, x, y):
-        self._model.fit(x, y)
+    def train(self, X, y):
+        self._model.fit(X, y)
 
     def predict(self, x):
         return self._model.predict([x])[0]
+
+    def evaluate(self, X, Y, label):
+        return
