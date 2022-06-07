@@ -11,7 +11,7 @@ import tensorflow as tf  # TODO: remove (and replace the usages with numpy)
 import seaborn as sns
 
 from ml_deeco.estimators import CategoricalFeature, BinaryFeature, Estimate, BoundFeature
-from ml_deeco.simulation import SIMULATION_GLOBALS
+#from ml_deeco.simulation import SIMULATION_GLOBALS
 from ml_deeco.utils import Log, verbosePrint
 
 from pathlib import Path
@@ -25,7 +25,7 @@ Data = namedtuple('Data', ['x', 'y'])
 
 class Estimator(abc.ABC):
 
-    def __init__(self, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
+    def __init__(self, *, simulation=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
         """
         Parameters
         ----------
@@ -43,7 +43,8 @@ class Estimator(abc.ABC):
         saveCharts: bool
             If `True`, charts are generated from the evaluation of the model.
         """
-        SIMULATION_GLOBALS.estimators.append(self)
+        #SIMULATION_GLOBALS.estimators.append(self)
+        self.simulation = simulation
 
         self.data: List[Data] = []
         if outputFolder is not None:
@@ -94,7 +95,6 @@ class Estimator(abc.ABC):
         if len(self._estimates) == 0:
             # print("WARNING: No Estimates assigned, the Estimator is useless.", file=sys.stderr)
             return
-
         for estimate in self._estimates:
             estimate.prepare()
 
@@ -226,7 +226,7 @@ class Estimator(abc.ABC):
                 return self.evaluate_regression(label, targetName, y_pred, y_true)
 
     def evaluate_regression(self, label, targetName, y_pred, y_true):
-        mse = tf.reduce_mean(tf.metrics.mse(y_true, y_pred))
+        mse = np.mean(np.mean(np.square(y_true - y_pred), axis=-1))
         self.verbosePrint(f"{label} – {targetName} MSE: {mse:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
@@ -247,7 +247,11 @@ class Estimator(abc.ABC):
         return mse
 
     def evaluate_binary_classification(self, label, targetName, y_pred, y_true):
-        accuracy = tf.reduce_mean(tf.metrics.binary_accuracy(y_true, y_pred))
+        def binary_accuracy(a, b):
+            assert len(a)==len(b), "arrays must be same size"
+            return sum([1 if x==y else 0 for x,y in zip(a,b)])/len(a)
+
+        accuracy = np.mean(binary_accuracy(y_true, y_pred))
         self.verbosePrint(f"{label} – {targetName} Accuracy: {accuracy:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
