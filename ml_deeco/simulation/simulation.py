@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Callable, List, Tuple, TYPE_CHECKING
 
-from ml_deeco.utils import verbosePrint, readYaml, Validators
+from ml_deeco.utils import verbosePrint, readYaml
 if TYPE_CHECKING:
     from ml_deeco.simulation import Ensemble, Component
 
@@ -63,10 +63,7 @@ class Simulation:
 
         for intArgument in ['iterations','simulations']:
             if intArgument in configDict:
-                Validators.validateType(
-                    configDict[intArgument],
-                    int, 
-                    f"The {intArgument} must be an integer")
+                assert isinstance(configDict[intArgument],int) , f"The {intArgument} must be an integer"
 
 
             if configDict[intArgument]>0:
