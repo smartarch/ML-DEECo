@@ -9,7 +9,7 @@ from typing import Callable, List, TYPE_CHECKING, Optional, Dict
 import numpy as np
 
 from ml_deeco.estimators import Feature, TimeFeature, NumericFeature
-from ml_deeco.simulation import SIMULATION_GLOBALS
+#from ml_deeco.simulation import SIMULATION_GLOBALS
 
 if TYPE_CHECKING:
     from ml_deeco.estimators import Estimator
@@ -103,6 +103,8 @@ class Estimate(abc.ABC):
         self.dataCollector = DataCollector(self, **dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 
+        
+
     def using(self, estimator: 'Estimator'):
         """Assigns an estimator to the estimate."""
         self.estimator = estimator
@@ -182,7 +184,7 @@ class Estimate(abc.ABC):
 
     def _estimate(self, *args):
         """Helper function to compute the estimate."""
-        if SIMULATION_GLOBALS.useBaselines:
+        if self.estimator.simulation.useBaselines:
             return self.baseline(*args)
 
         x = self.generateRecord(*args)
@@ -214,13 +216,14 @@ class Estimate(abc.ABC):
 
     def cacheEstimates(self, ensemble, components):
         """Computes the estimates for all components in a batch at the same time and caches the results. Use this only for estimates assigned to ensemble roles."""
-        if SIMULATION_GLOBALS.useBaselines:
+        if self.estimator.simulation.useBaselines:
             self.estimateCache[ensemble] = {
                 comp: self.baseline(ensemble, comp)
                 for comp in components
             }
         else:
             records = np.array([self.generateRecord(ensemble, comp) for comp in components])
+
             predictions = self.estimator.predictBatch(records)
 
             self.estimateCache[ensemble] = {
@@ -345,9 +348,9 @@ class ValueEstimate(Estimate, abc.ABC):
 
     def inTimeSteps(self, timeSteps):
         """Automatically collect data with fixed time difference between inputs and targets."""
-        self.targetsGuards.append(lambda *args: SIMULATION_GLOBALS.currentTimeStep >= timeSteps)
-        self.inputsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
-        self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep - timeSteps)
+        self.targetsGuards.append(lambda *args: self.estimator.simulation.currentTimeStep >= timeSteps)
+        self.inputsIdFunction = lambda *args: (*args, self.estimator.simulation.currentTimeStep)
+        self.targetsIdFunction = lambda *args: (*args, self.estimator.simulation.currentTimeStep - timeSteps)
         return self
 
     def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
@@ -370,9 +373,9 @@ class ValueEstimate(Estimate, abc.ABC):
         self.timeStepsRange = (minTimeSteps, maxTimeSteps, timeStepsStep)
 
         self.inputs.insert(0, BoundFeature("time", NumericFeature(minTimeSteps, maxTimeSteps), None))
-        self.targetsGuards.append(lambda *args: SIMULATION_GLOBALS.currentTimeStep >= minTimeSteps)
-        self.inputsIdFunction = lambda *args, time: (*args, SIMULATION_GLOBALS.currentTimeStep + time)
-        self.targetsIdFunction = lambda *args: (*args, SIMULATION_GLOBALS.currentTimeStep)
+        self.targetsGuards.append(lambda *args: self.estimator.simulation.currentTimeStep >= minTimeSteps)
+        self.inputsIdFunction = lambda *args, time: (*args, self.estimator.simulation.currentTimeStep + time)
+        self.targetsIdFunction = lambda *args: (*args, self.estimator.simulation.currentTimeStep)
         return self
 
     def target(self, feature: Optional[Feature] = None):
@@ -437,7 +440,7 @@ class TimeEstimate(Estimate):
 
     def __init__(self, **dataCollectorKwargs):
         super().__init__(**dataCollectorKwargs)
-        self.timeFunc = self.time(lambda *args: SIMULATION_GLOBALS.currentTimeStep)
+        self.timeFunc = self.time(lambda *args: self.estimator.simulation.currentTimeStep)
 
         self.targets = [BoundFeature("time", TimeFeature(), None)]
         self.conditionFunctions = []
