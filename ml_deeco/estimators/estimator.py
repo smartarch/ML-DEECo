@@ -25,7 +25,7 @@ Data = namedtuple('Data', ['x', 'y'])
 
 class Estimator(abc.ABC):
 
-    def __init__(self, *, simulation=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
+    def __init__(self, *, experiment=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
         """
         Parameters
         ----------
@@ -44,7 +44,7 @@ class Estimator(abc.ABC):
             If `True`, charts are generated from the evaluation of the model.
         """
         #SIMULATION_GLOBALS.estimators.append(self)
-        self.simulation = simulation
+        self.experiment = experiment
 
         self.data: List[Data] = []
         if outputFolder is not None:

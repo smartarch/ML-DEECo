@@ -29,7 +29,7 @@ from pathlib import Path
 
 # SIMULATION_GLOBALS = SimulationGlobals()
 
-class Simulation:
+class Experiment:
     def __init__ (self,        
         prepareSimulation: Callable[[int, int], Tuple[List['Component'], List['Ensemble']]],
         prepareIteration: Optional[Callable[[int], None]] = None,
@@ -38,6 +38,8 @@ class Simulation:
         stepCallback: Optional[Callable[[List['Component'], List['Ensemble'], int], None]] = None,
         iterations: int = 0,
         simulations: int = 0,
+        steps: int = 0,
+        baselineEstimator= 0,
         configFile: str = None,
         baseFolder: Path = None ):
 
@@ -49,9 +51,11 @@ class Simulation:
         
         self.iterations = iterations
         self.simulations = simulations
+        self.steps = steps
         self.estimators = []
         self.currentTimeStep = 0
-        self.baseFolder = baseFolder 
+        self.baseFolder = baseFolder
+        self.baselineEstimator = 0
         self.useBaselines = True
         
         if configFile is not None:
@@ -84,7 +88,7 @@ class Simulation:
                 constructorArgs = {
                     **constructorArgs,
                     'baseFolder':self.baseFolder,
-                    'simulation': self,
+                    'experiment': self,
                 }
 
                 obj = classCreator(**constructorArgs)
@@ -145,7 +149,6 @@ class Simulation:
 
     def run_simulation(
         self,
-        steps: int,
         components: List['Component'],
         ensembles: List['Ensemble']):
         """
@@ -166,7 +169,7 @@ class Simulation:
                 - current time step (int).
         """
 
-        for step in range(steps):
+        for step in range(self.steps):
 
             verbosePrint(f"Step {step + 1}:", 3)
             self.currentTimeStep = step
@@ -178,7 +181,7 @@ class Simulation:
                 self.stepCallback(components, materializedEnsembles, step)
 
 
-    def run_experiment(self,steps: int):
+    def run(self):
 
         """
         Runs `iterations` iteration of the experiment. Each iteration consist of running the simulation `simulations` times (each simulation is run for `steps` steps) and then performing training of the Estimator (ML model).
@@ -233,7 +236,7 @@ class Simulation:
 
                 components, ensembles = self.prepareSimulation(iteration, simulation)
 
-                self.run_simulation(steps, components, ensembles)
+                self.run_simulation(components, ensembles)
 
                 if self.simulationCallback is not None:
                     self.simulationCallback(components, ensembles, iteration, simulation)
