@@ -40,6 +40,7 @@ class NeuralNetworkEstimator(Estimator):
         self._optimizer = optimizer
         self._loss = loss
         self._fit_params = DEFAULT_FIT_PARAMS.copy()
+
         if fit_params:
             self._fit_params.update(fit_params)
         # noinspection PyTypeChecker
@@ -127,7 +128,7 @@ class NeuralNetworkEstimator(Estimator):
         epochs = range(1, self._fit_params["epochs"] + 1)
         for row in zip(epochs, history.history["loss"], history.history["val_loss"]):
             trainLog.register(row)
-        trainLog.export(f"{self._outputFolder}/{self._iteration}-training.csv")
+        trainLog.export(self._outputFolder / f"{self._iteration}-training.csv")
 
     def saveModel(self, suffix=""):
         suffix = str(suffix)
@@ -135,9 +136,9 @@ class NeuralNetworkEstimator(Estimator):
             filename = f"model_{suffix}.h5"
         else:
             filename = "model.h5"
-        self._model.save(f"{self._outputFolder}/{filename}")
+        self._model.save(self._outputFolder / filename)
 
     def loadModel(self, modelPath=None):
         if modelPath is None:
-            modelPath = f"{self._outputFolder}/model.h5"
+            modelPath = self._outputFolder / "model.h5"
         self._model = tf.keras.models.load_model(modelPath)

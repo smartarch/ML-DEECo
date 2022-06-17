@@ -2,17 +2,17 @@
 Estimator methods
 """
 import abc
-import os
 from datetime import datetime
 from typing import List
 from collections import namedtuple
 import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
+from pathlib import Path
 
 from ml_deeco.estimators import CategoricalFeature, BinaryFeature, Estimate, BoundFeature
-from ml_deeco.simulation import SIMULATION_GLOBALS
 from ml_deeco.utils import Log, verbosePrint
+
 
 Data = namedtuple('Data', ['x', 'y'])
 
@@ -60,7 +60,7 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, *, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
+    def __init__(self, *, experiment=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
         """
         Parameters
         ----------
@@ -78,11 +78,18 @@ class Estimator(abc.ABC):
         saveCharts: bool
             If `True`, charts are generated from the evaluation of the model.
         """
-        SIMULATION_GLOBALS.estimators.append(self)
+        self.experiment = experiment
+        if experiment:
+            experiment.estimators.append(self)
 
         self.data: List[Data] = []
         if outputFolder is not None:
-            os.makedirs(outputFolder, exist_ok=True)
+            if baseFolder is not None and isinstance(baseFolder, Path):
+                outputFolder = baseFolder / outputFolder
+            else:
+                outputFolder = Path() / outputFolder
+            outputFolder.mkdir(parents=True, exist_ok=True)
+
         self._outputFolder = outputFolder
         self.name = name
         self._skipEndIteration = skipEndIteration
@@ -124,7 +131,6 @@ class Estimator(abc.ABC):
         if len(self._estimates) == 0:
             # print("WARNING: No Estimates assigned, the Estimator is useless.", file=sys.stderr)
             return
-
         for estimate in self._estimates:
             estimate.prepare()
 
@@ -265,7 +271,7 @@ class Estimator(abc.ABC):
                 dataLog.register(list(t) + list(p))
 
             if self._outputFolder is not None:
-                dataLog.export(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.csv")
+                dataLog.export(self._outputFolder/ f"{self._iteration}-evaluation-{label}-{targetName}.csv")
 
             if type(feature) == BinaryFeature:
                 metric = self.evaluate_binary_classification(label, targetName, y_pred, y_true)
@@ -293,7 +299,7 @@ class Estimator(abc.ABC):
             plt.xlim(lims)
             plt.ylim(lims)
             plt.plot(lims, lims, lw=0.5, c='k')
-            plt.savefig(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.png")
+            plt.savefig(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.png")
             plt.close(fig)
 
         return mse
@@ -311,7 +317,7 @@ class Estimator(abc.ABC):
             plt.xlabel('Predictions')
             plt.ylabel('True Values')
             plt.title(f"{self.name} ({self.estimatorName})\nIteration {self._iteration}, target: {targetName}\n{label} Accuracy: {accuracy:.3f}")
-            plt.savefig(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.png")
+            plt.savefig(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.png")
             plt.close(fig)
 
         return accuracy
@@ -329,7 +335,7 @@ class Estimator(abc.ABC):
             plt.xlabel('Predictions')
             plt.ylabel('True Values')
             plt.title(f"{self.name} ({self.estimatorName})\nIteration {self._iteration}, target: {targetName}\n{label} Accuracy: {accuracy:.3f}")
-            plt.savefig(f"{self._outputFolder}/{self._iteration}-evaluation-{label}-{targetName}.png")
+            plt.savefig(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.png")
             plt.close(fig)
 
         return accuracy
@@ -344,7 +350,7 @@ class Estimator(abc.ABC):
         self.collectData()
 
         if self._outputFolder is not None:
-            self.saveData(f"{self._outputFolder}/{self._iteration}-data.csv")
+            self.saveData(self._outputFolder / f"{self._iteration}-data.csv")
 
         count = sum((len(d.x) for d in self.data))
         test_size = int(self._testSplit * count)
