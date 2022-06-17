@@ -1,3 +1,4 @@
+from .configuration import *
 from .simulation import *
 from .components import *
 from .components2d import *
