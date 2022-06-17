@@ -1,33 +1,14 @@
 from datetime import datetime
 from typing import Optional, Callable, List, Tuple, TYPE_CHECKING
-
 from ml_deeco.utils import verbosePrint, readYaml
+from ml_deeco.simulation import Configuration
+
 if TYPE_CHECKING:
     from ml_deeco.simulation import Ensemble, Component
 
 from pathlib import Path
 
-# class SimulationGlobals:
-#     """
-#     Storage for the global simulation data such as a list of all estimators and the current time step.
 
-#     This simplifies the implementation as it allows for instance the TimeEstimate to access the current time step of the simulation.
-#     """
-
-#     def __init__(self):
-#         if 'SIMULATION_GLOBALS' in locals():
-#             raise RuntimeError("Do not create a new instance of the SimulationGlobals. Use the SIMULATION_GLOBALS global variable instead.")
-#         self.estimators = []
-#         self.currentTimeStep = 0
-#         self.useBaselines = True  # TODO: documentation
-
-#     def initEstimators(self):
-#         """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
-#         for est in self.estimators:
-#             est.init()
-
-
-# SIMULATION_GLOBALS = SimulationGlobals()
 
 class Experiment:
     def __init__ (self,        
@@ -36,45 +17,27 @@ class Experiment:
         iterationCallback: Optional[Callable[[int], None]] = None,
         simulationCallback: Optional[Callable[[List['Component'], List['Ensemble'], int, int], None]] = None,
         stepCallback: Optional[Callable[[List['Component'], List['Ensemble'], int], None]] = None,
-        iterations: int = 0,
-        simulations: int = 0,
-        steps: int = 0,
-        baselineEstimator= 0,
-        configFile: str = None,
-        baseFolder: Path = None ):
+        config: Configuration = None ):
 
         self.prepareSimulation = prepareSimulation
         self.prepareIteration = prepareIteration
         self.iterationCallback = iterationCallback
         self.simulationCallback = simulationCallback
         self.stepCallback = stepCallback
-        
-        self.iterations = iterations
-        self.simulations = simulations
-        self.steps = steps
-        self.estimators = []
         self.currentTimeStep = 0
-        self.baseFolder = baseFolder
-        self.baselineEstimator = 0
+        
+        self.config = Configuration()
+        if config is not None:
+            self.config = config
+
         self.useBaselines = True
-        
-        if configFile is not None:
-            self.processConfigFile(configFile)
+        self.baselineEstimator = 0
+        self.estimators = []
+        self.createEstimators()
 
-
-    def processConfigFile(self, configFile):
-        configDict = readYaml(configFile)
-
-        for intArgument in ['iterations','simulations']:
-            if intArgument in configDict:
-                assert isinstance(configDict[intArgument],int) , f"The {intArgument} must be an integer"
-
-
-            if configDict[intArgument]>0:
-                self.__dict__[intArgument] = configDict[intArgument]
-        
-        if 'estimators' in configDict:
-            for estimatorName, estimator in configDict['estimators'].items():
+    def createEstimators(self):
+        if 'estimators' in self.config.__dict__:
+            for estimatorName, estimator in self.config.estimators.items():
                 className = estimator['class']
                 constructorArgs = estimator['args'] if estimator['args'] is not None else {}
                 components = className.split('.')
@@ -87,13 +50,14 @@ class Experiment:
                 
                 constructorArgs = {
                     **constructorArgs,
-                    'baseFolder':self.baseFolder,
+                    'baseFolder':self.config.output,
                     'experiment': self,
                 }
 
                 obj = classCreator(**constructorArgs)
                 self.__dict__[estimatorName] = obj
                 self.estimators.append(obj)
+
         
 
     def initEstimators(self):
@@ -169,7 +133,7 @@ class Experiment:
                 - current time step (int).
         """
 
-        for step in range(self.steps):
+        for step in range(self.config.locals['maxSteps']):
 
             verbosePrint(f"Step {step + 1}:", 3)
             self.currentTimeStep = step
@@ -226,12 +190,12 @@ class Experiment:
 
         self.initEstimators()
 
-        for iteration in range(self.iterations):
+        for iteration in range(self.config.iterations):
             verbosePrint(f"Iteration {iteration + 1} started at {datetime.now()}:", 1)
             if self.prepareIteration is not None:
                 self.prepareIteration(iteration)
 
-            for simulation in range(self.simulations):
+            for simulation in range(self.config.simulations):
                 verbosePrint(f"Simulation {simulation + 1} started at {datetime.now()}:", 2)
 
                 components, ensembles = self.prepareSimulation(iteration, simulation)
