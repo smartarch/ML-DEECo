@@ -79,8 +79,7 @@ class Estimator(abc.ABC):
             If `True`, charts are generated from the evaluation of the model.
         """
         self.experiment = experiment
-        if experiment:
-            experiment.estimators.append(self)
+
 
         self.data: List[Data] = []
         if outputFolder is not None:
