@@ -7,15 +7,35 @@ from typing import List
 from collections import namedtuple
 import numpy as np
 from matplotlib import pyplot as plt
-import tensorflow as tf  # TODO: remove (and replace the usages with numpy)
 import seaborn as sns
+from pathlib import Path
 
 from ml_deeco.estimators import CategoricalFeature, BinaryFeature, Estimate, BoundFeature
-#from ml_deeco.simulation import SIMULATION_GLOBALS
 from ml_deeco.utils import Log, verbosePrint
 
-from pathlib import Path
+
 Data = namedtuple('Data', ['x', 'y'])
+
+
+def binary_confusion_matrix(y_true_class, y_pred_class):
+    return [[
+        np.sum((y_true_class == 1) & (y_pred_class == 1)),
+        np.sum((y_true_class == 1) & (y_pred_class == 0)),
+    ], [
+        np.sum((y_true_class == 0) & (y_pred_class == 1)),
+        np.sum((y_true_class == 0) & (y_pred_class == 0)),
+    ]]
+
+
+def confusion_matrix(y_true_class, y_pred_class):
+    n = int(max(y_true_class.max(), y_pred_class.max())) + 1
+    return [
+        [
+            np.sum((y_true_class == true) & (y_pred_class == pred))
+            for pred in range(n)
+        ]
+        for true in range(n)
+    ]
 
 
 #########################
@@ -24,6 +44,21 @@ Data = namedtuple('Data', ['x', 'y'])
 
 
 class Estimator(abc.ABC):
+    """
+    Base class for all the estimators (ML models). When implementing a new estimator, the following methods must be
+    implemented:
+     - train: train the model using a batch of training data `(X, Y)`
+     - predict: predict the output for one input `x`
+     - estimatorName: identification of the ML model
+    Optionally, the `predictBatch` method can also be overridden.
+
+    The `init` method can be used to construct the ML model.
+    The inputs of the model can be obtained using the `self._get_input_features()` method. It returns a list of
+    features (instances of the `Feature` class) containing metadata regarding the input such as the
+    `feature.getNumFeatures()` method which return the number of elements in the input vector corresponding to the
+    feature (the input vector is a concatenation of the elements corresponding to the features).
+    Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
+    """
 
     def __init__(self, *, experiment=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
         """
@@ -43,8 +78,9 @@ class Estimator(abc.ABC):
         saveCharts: bool
             If `True`, charts are generated from the evaluation of the model.
         """
-        #SIMULATION_GLOBALS.estimators.append(self)
         self.experiment = experiment
+        if experiment:
+            experiment.estimators.append(self)
 
         self.data: List[Data] = []
         if outputFolder is not None:
@@ -130,6 +166,18 @@ class Estimator(abc.ABC):
         elif not self._accumulateData:
             self.data = self.data[-1:]
 
+    def _get_input_features(self):
+        return [
+            feature
+            for _, feature, _ in self._inputs
+        ]
+
+    def _get_target_features(self):
+        return [
+            feature
+            for _, feature, _ in self._targets
+        ]
+
     def saveData(self, fileName):
         dataLogHeader = []
         for featureName, feature, _ in self._inputs:
@@ -177,6 +225,7 @@ class Estimator(abc.ABC):
         """
         return np.array([self.predict(x) for x in X])
 
+    @abc.abstractmethod
     def train(self, X, Y):
         """
         Parameters
@@ -197,10 +246,16 @@ class Estimator(abc.ABC):
         Y : np.ndarray
             Target outputs, shape [batch, targets].
         label : str
+
+        Returns
+        -------
+        float | List[float]
+            Evaluation metrics (only one if we have only one target).
         """
         predictions = self.predictBatch(X)
 
         currentIndex = 0
+        metrics = []
         for targetName, feature, _ in self._targets:
             width = feature.getNumFeatures()
             y_pred = predictions[:, currentIndex:currentIndex + width]
@@ -219,14 +274,17 @@ class Estimator(abc.ABC):
                 dataLog.export(self._outputFolder/ f"{self._iteration}-evaluation-{label}-{targetName}.csv")
 
             if type(feature) == BinaryFeature:
-                return self.evaluate_binary_classification(label, targetName, y_pred, y_true)
+                metric = self.evaluate_binary_classification(label, targetName, y_pred, y_true)
             elif type(feature) == CategoricalFeature:
-                return self.evaluate_classification(label, targetName, y_pred, y_true)
+                metric = self.evaluate_classification(label, targetName, y_pred, y_true)
             else:
-                return self.evaluate_regression(label, targetName, y_pred, y_true)
+                metric = self.evaluate_regression(label, targetName, y_pred, y_true)
+            metrics.append(metric)
+
+        return metrics[0] if len(metrics) == 1 else metrics
 
     def evaluate_regression(self, label, targetName, y_pred, y_true):
-        mse = np.mean(np.mean(np.square(y_true - y_pred), axis=-1))
+        mse = np.mean((y_true - y_pred) ** 2)
         self.verbosePrint(f"{label} – {targetName} MSE: {mse:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
@@ -247,41 +305,37 @@ class Estimator(abc.ABC):
         return mse
 
     def evaluate_binary_classification(self, label, targetName, y_pred, y_true):
-        def binary_accuracy(a, b):
-            assert len(a)==len(b), "arrays must be same size"
-            return sum([1 if x==y else 0 for x,y in zip(a,b)])/len(a)
-
-        accuracy = np.mean(binary_accuracy(y_true, y_pred))
+        y_true_class = np.squeeze(y_true > 0.5)
+        y_pred_class = np.squeeze(y_pred > 0.5)
+        accuracy = np.mean(y_true_class == y_pred_class)
         self.verbosePrint(f"{label} – {targetName} Accuracy: {accuracy:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
-            y_true = tf.squeeze(y_true)
-            y_pred = tf.squeeze(y_pred > 0.5)
-            cm = tf.math.confusion_matrix(y_true, y_pred)
+            cm = binary_confusion_matrix(y_true_class, y_pred_class)
             fig = plt.figure(figsize=(10, 10))
-            sns.heatmap(cm, annot=True)
+            sns.heatmap(cm, annot=True, xticklabels=["True", "False"], yticklabels=["True", "False"], fmt='.6g')
             plt.xlabel('Predictions')
             plt.ylabel('True Values')
             plt.title(f"{self.name} ({self.estimatorName})\nIteration {self._iteration}, target: {targetName}\n{label} Accuracy: {accuracy:.3f}")
-            plt.savefig(self._outputFolder/ f"{self._iteration}-evaluation-{label}-{targetName}.png")
+            plt.savefig(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.png")
             plt.close(fig)
 
         return accuracy
 
     def evaluate_classification(self, label, targetName, y_pred, y_true):
-        accuracy = tf.reduce_mean(tf.metrics.categorical_accuracy(y_true, y_pred))
+        y_true_class = np.argmax(y_true, axis=1)
+        y_pred_class = np.argmax(y_pred, axis=1)
+        accuracy = np.mean(y_true_class == y_pred_class)
         self.verbosePrint(f"{label} – {targetName} Accuracy: {accuracy:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
-            y_true_classes = tf.argmax(y_true, axis=1)
-            y_pred_classes = tf.argmax(y_pred, axis=1)
-            cm = tf.math.confusion_matrix(y_true_classes, y_pred_classes)
+            cm = confusion_matrix(y_true_class, y_pred_class)
             fig = plt.figure(figsize=(10, 10))
-            sns.heatmap(cm, annot=True)
+            sns.heatmap(cm, annot=True, fmt='.6g')
             plt.xlabel('Predictions')
             plt.ylabel('True Values')
             plt.title(f"{self.name} ({self.estimatorName})\nIteration {self._iteration}, target: {targetName}\n{label} Accuracy: {accuracy:.3f}")
-            plt.savefig(self._outputFolder/ f"{self._iteration}-evaluation-{label}-{targetName}.png")
+            plt.savefig(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.png")
             plt.close(fig)
 
         return accuracy
@@ -296,7 +350,7 @@ class Estimator(abc.ABC):
         self.collectData()
 
         if self._outputFolder is not None:
-            self.saveData(self._outputFolder/ f"{self._iteration}-data.csv")
+            self.saveData(self._outputFolder / f"{self._iteration}-data.csv")
 
         count = sum((len(d.x) for d in self.data))
         test_size = int(self._testSplit * count)
@@ -319,9 +373,10 @@ class Estimator(abc.ABC):
             self.verbosePrint(f"{self.name} ({self.estimatorName}): Training {self._iteration} started at {datetime.now()}: ", 1)
             self.verbosePrint(f"{self.name} ({self.estimatorName}): Train data shape: {train_x.shape}, test data shape: {test_x.shape}.", 2)
 
-            self.evaluate(train_x, train_y, label="Before-Train")
-            if test_size > 0:
-                self.evaluate(test_x, test_y, label="Before-Test")
+            if self._iteration > 1:
+                self.evaluate(train_x, train_y, label="Before-Train")
+                if test_size > 0:
+                    self.evaluate(test_x, test_y, label="Before-Test")
 
             self.train(train_x, train_y)
 
