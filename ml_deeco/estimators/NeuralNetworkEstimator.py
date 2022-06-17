@@ -51,8 +51,8 @@ class NeuralNetworkEstimator(Estimator):
             self._model = self.constructModel()
 
     def constructModel(self) -> tf.keras.Model:
-        numFeatures = sum((feature.getNumFeatures() for _, feature, _ in self._inputs))
-        numTargets = sum((feature.getNumFeatures() for _, feature, _ in self._targets))
+        numFeatures = sum((feature.getNumFeatures() for feature in self._get_input_features()))
+        numTargets = sum((feature.getNumFeatures() for feature in self._get_target_features()))
 
         if self._activation is None:
             self._activation = self.inferActivation()
