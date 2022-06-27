@@ -60,7 +60,7 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, *, experiment=None, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
+    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
         """
         Parameters
         ----------
@@ -79,7 +79,7 @@ class Estimator(abc.ABC):
             If `True`, charts are generated from the evaluation of the model.
         """
         self.experiment = experiment
-
+        experiment.appendEstimator(self)
 
         self.data: List[Data] = []
         if outputFolder is not None:

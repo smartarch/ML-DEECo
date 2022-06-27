@@ -1,9 +1,10 @@
 from enum import IntEnum
 from typing import Optional
-import tensorflow as tf
 
 from ml_deeco.simulation import MovingComponent2D, Point2D
-from ml_deeco.estimators import ValueEstimate, NeuralNetworkEstimator
+from ml_deeco.estimators import ValueEstimate, LinearRegressionEstimator
+
+from world import WORLD
 
 
 class TruckState(IntEnum):
@@ -15,9 +16,8 @@ class TruckState(IntEnum):
 
 
 # we need to create an estimator to prepare the neural network
-truckFuelEstimator = NeuralNetworkEstimator(
-    hidden_layers=[],  # No hidden layers -> linear regression
-    optimizer=tf.optimizers.Adam(learning_rate=0.1),
+truckFuelEstimator = LinearRegressionEstimator(
+    WORLD.experiment,
     outputFolder="results/fuel", name="Truck Fuel"
 )
 

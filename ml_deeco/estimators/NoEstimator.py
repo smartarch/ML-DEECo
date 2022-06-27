@@ -8,8 +8,11 @@ class NoEstimator(Estimator):
     Does not produce any training logs or outputs. Predicts 0 for each target.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, outputFolder=None, skipEndIteration=True, printLogs=False)
+    def __init__(self, experiment, **kwargs):
+        super().__init__(experiment, **kwargs, outputFolder=None, skipEndIteration=True, printLogs=False)
+
+    def train(self, X, Y):
+        pass
 
     @property
     def estimatorName(self):

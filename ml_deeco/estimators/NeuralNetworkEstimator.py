@@ -19,7 +19,7 @@ class NeuralNetworkEstimator(Estimator):
     def estimatorName(self):
         return f"Neural network {self._hidden_layers}"
 
-    def __init__(self, hidden_layers, activation=None, loss=None, fit_params=None, optimizer=None, **kwargs):
+    def __init__(self, experiment, hidden_layers, activation=None, loss=None, fit_params=None, optimizer=None, **kwargs):
         """
         Parameters
         ----------
@@ -34,7 +34,7 @@ class NeuralNetworkEstimator(Estimator):
         optimizer: tf.optimizers.Optimizer
             Optional optimizer for the model. Default is `tf.optimizers.Adam()`.
         """
-        super().__init__(**kwargs)
+        super().__init__(experiment, **kwargs)
         self._hidden_layers = hidden_layers
         self._activation = activation
         self._optimizer = optimizer
