@@ -1,5 +1,5 @@
+from ml_deeco.estimators import LinearRegressionEstimator
 from plot import drawPlot
-from world import WORLD
 
 from ml_deeco.simulation import Point2D, Experiment, Configuration
 from ml_deeco.utils import setVerboseLevel, Log
@@ -68,8 +68,15 @@ if __name__ == '__main__':
             steps=80,       # the simulation is run for 80 steps
         )
     )
-    WORLD.experiment = experiment  # TODO: can we solve the cyclic imports in a better way?
+
+    # prepare the neural network
+    experiment.truckFuelEstimator = LinearRegressionEstimator(
+        experiment,
+        outputFolder="results/fuel", name="Truck Fuel"
+    )
+
     # import the Truck component to initialize the estimate
-    from truck import Truck  # TODO: can we remove this and do the 'initEstimators' after 'prepareSimulation'
+    from truck import Truck
+    Truck.initEstimates(experiment)
 
     experiment.run()

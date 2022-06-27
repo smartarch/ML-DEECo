@@ -2,14 +2,12 @@
 Estimates
 """
 import abc
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 from enum import Enum, auto
-from typing import Callable, List, TYPE_CHECKING, Optional, Dict
-
+from typing import Callable, List, TYPE_CHECKING, Optional, Dict, Union
 import numpy as np
 
 from ml_deeco.estimators import Feature, TimeFeature, NumericFeature
-#from ml_deeco.simulation import SIMULATION_GLOBALS
 
 if TYPE_CHECKING:
     from ml_deeco.estimators import Estimator
@@ -103,12 +101,22 @@ class Estimate(abc.ABC):
         self.dataCollector = DataCollector(self, **dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 
-        
+    def init(self, experiment):
+        """Assigns an estimator from the experiment. This is necessary when the estimator was specified as a string in the 'using' method."""
+        from ml_deeco.estimators import Estimator
+        if isinstance(self.estimator, str):
+            if not hasattr(experiment, self.estimator) or \
+                    not isinstance(getattr(experiment, self.estimator), Estimator):
+                raise AttributeError(f"Estimator '{self.estimator}' not found in the experiment class.")
+            self.estimator = getattr(experiment, self.estimator)
+            self.estimator.assignEstimate(self)
 
-    def using(self, estimator: 'Estimator'):
+    def using(self, estimator: Union['Estimator', str]):
         """Assigns an estimator to the estimate."""
+        from ml_deeco.estimators import Estimator
         self.estimator = estimator
-        estimator.assignEstimate(self)
+        if isinstance(estimator, Estimator):
+            estimator.assignEstimate(self)
         return self
 
     def withBaseline(self, baseline: Callable):

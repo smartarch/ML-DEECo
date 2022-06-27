@@ -2,9 +2,7 @@ from enum import IntEnum
 from typing import Optional
 
 from ml_deeco.simulation import MovingComponent2D, Point2D
-from ml_deeco.estimators import ValueEstimate, LinearRegressionEstimator
-
-from world import WORLD
+from ml_deeco.estimators import ValueEstimate
 
 
 class TruckState(IntEnum):
@@ -13,13 +11,6 @@ class TruckState(IntEnum):
     MOVING_TO_STATION = 2  # returning to the station in order not to run out of fuel
     AT_STATION = 3         # inactive at the station
     TERMINATED = 4         # inactive because it ran out of fuel
-
-
-# we need to create an estimator to prepare the neural network
-truckFuelEstimator = LinearRegressionEstimator(
-    WORLD.experiment,
-    outputFolder="results/fuel", name="Truck Fuel"
-)
 
 
 class Truck(MovingComponent2D):
@@ -32,7 +23,7 @@ class Truck(MovingComponent2D):
         self.station = self.location
         self.useEstimate = False
 
-    fuelEstimate = ValueEstimate().inTimeSteps(10).using(truckFuelEstimator)
+    fuelEstimate = ValueEstimate().inTimeSteps(10).using('truckFuelEstimator')
 
     @fuelEstimate.input()
     @fuelEstimate.target()

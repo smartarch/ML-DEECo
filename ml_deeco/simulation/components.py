@@ -45,5 +45,12 @@ class Component(metaclass=ComponentMeta):
             estimate.collectInputs(self)
             estimate.collectTargets(self)
 
+    @classmethod
+    def initEstimates(cls, experiment):
+        estimates = [fld for (fldName, fld) in cls.__dict__.items()
+                     if not fldName.startswith('__') and isinstance(fld, Estimate)]
+        for estimate in estimates:
+            estimate.init(experiment)
+
     def __repr__(self) -> str:
         return self.id
