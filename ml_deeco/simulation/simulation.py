@@ -201,7 +201,7 @@ class Experiment(abc.ABC):
                 - current time step (int).
         """
 
-        for step in range(self.config.maxSteps):
+        for step in range(self.config.steps):
 
             verbosePrint(f"Step {step + 1}:", 3)
             self.currentTimeStep = step

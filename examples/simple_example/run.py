@@ -65,7 +65,7 @@ if __name__ == '__main__':
         config=Configuration(
             iterations=2,   # we run two iterations -- the ML model trains between iterations
             simulations=1,  # one simulation in each iteration
-            maxSteps=80,    # the simulation is run for 80 steps
+            steps=80,       # the simulation is run for 80 steps
         )
     )
     WORLD.experiment = experiment  # TODO: can we solve the cyclic imports in a better way?

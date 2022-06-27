@@ -22,7 +22,7 @@ class Configuration:
         self.name = 'default'
         self.iterations = 1
         self.simulations = 1
-        self.maxSteps = 0
+        self.steps = 0
         self.output = "output"
         self.plot = False
         self.seed = 42
@@ -31,6 +31,7 @@ class Configuration:
         self.locals = {}
         self.estimators = {}
 
+    # TODO: make updates recursive -> update values in 'locals' dictionary, not replace all of them
     def loadConfigurationFromFile(self, configFile):
         yaml = readYaml(configFile)
         for key, value in yaml.items():
