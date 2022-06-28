@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 from ml_deeco.estimators import Estimate
+
+if TYPE_CHECKING:
+    from ml_deeco.simulation import Experiment
 
 
 class ComponentMeta(type):
@@ -46,7 +51,8 @@ class Component(metaclass=ComponentMeta):
             estimate.collectTargets(self)
 
     @classmethod
-    def initEstimates(cls, experiment):
+    def initEstimates(cls, experiment: 'Experiment'):
+        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in the 'using' method."""
         estimates = [fld for (fldName, fld) in cls.__dict__.items()
                      if not fldName.startswith('__') and isinstance(fld, Estimate)]
         for estimate in estimates:

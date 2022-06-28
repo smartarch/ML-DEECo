@@ -6,7 +6,7 @@ from ml_deeco.estimators.estimate import TimeEstimate, ListWithEstimate, Estimat
 
 if TYPE_CHECKING:
     from ml_deeco.estimators import Estimator
-    from ml_deeco.simulation import Component
+    from ml_deeco.simulation import Component, Experiment
 
 
 class someOf(Iterable, Sized):
@@ -239,6 +239,9 @@ class someOfWithEstimate(someOf):
         sel.estimate = estimate
         return sel
 
+    def initEstimates(self, experiment):
+        self.estimate.init(experiment)
+
     def collectEstimateData(self, instance, allComponents, materialized):
         if self.estimate.collectOnlyIfMaterialized and not materialized:
             return
@@ -382,3 +385,19 @@ class Ensemble:
         for estimate in estimates:
             estimate.collectInputs(self)
             estimate.collectTargets(self)
+
+    @classmethod
+    def initEstimates(cls, experiment: 'Experiment'):
+        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in the 'using' method."""
+        
+        # ensemble roles
+        rolesWithEstimate = [fld for (fldName, fld) in cls.__dict__.items()
+                             if not fldName.startswith('__') and isinstance(fld, someOfWithEstimate)]
+        for role in set(rolesWithEstimate):
+            role.initEstimates(experiment)
+
+        # ensemble
+        estimates = [fld for (fldName, fld) in cls.__dict__.items()
+                     if not fldName.startswith('__') and isinstance(fld, Estimate)]
+        for estimate in estimates:
+            estimate.init(experiment)
