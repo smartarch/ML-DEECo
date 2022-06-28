@@ -1,8 +1,9 @@
 import abc
 from datetime import datetime
-from typing import Optional, Callable, List, Tuple, TYPE_CHECKING
-from ml_deeco.utils import verbosePrint, readYaml
+from typing import List, Tuple, TYPE_CHECKING
+
 from ml_deeco.simulation import Configuration
+from ml_deeco.utils import verbosePrint
 
 if TYPE_CHECKING:
     from ml_deeco.simulation import Ensemble, Component
@@ -11,7 +12,8 @@ if TYPE_CHECKING:
 
 def materialize_ensembles(components, ensembles):
     """
-    Performs the materialization of all ensembles. That includes actuating the materialized ensembles and collecting data for the estimates.
+    Performs the materialization of all ensembles. That includes actuating the materialized ensembles and collecting
+    data for the estimates.
 
     Parameters
     ----------
@@ -98,23 +100,24 @@ class Experiment(abc.ABC):
         self.estimators.append(estimator)
 
     def initEstimators(self):
-        """Initialize the estimators. This has to be called after the components and ensembles are imported and before the simulation is run."""
+        """Initialize the estimators. This has to be called after the components and ensembles are imported and before
+        the simulation is run."""
         for est in self.estimators:
             est.init()
 
     # user-supplied callbacks
 
     @abc.abstractmethod
-    def prepareSimulation(self, iteration: int, simulation: int) -> Tuple[List['Component'], List['Ensemble']]:
+    def prepareSimulation(self, iteration: int, run: int) -> Tuple[List['Component'], List['Ensemble']]:
         """
-        Prepares the components and ensembles for the simulation.
+        Prepares the components and ensembles for the simulation run.
 
         Parameters
         ----------
         iteration
             Number of the current iteration.
-        simulation
-            Number of the current simulation (in the current iteration).
+        run
+            Number of the current simulation run (in the current iteration).
 
         Returns
         -------
@@ -145,9 +148,9 @@ class Experiment(abc.ABC):
         """
         pass
 
-    def simulationCallback(self, components: List['Component'], ensembles: List['Ensemble'], iteration: int, simulation: int):
+    def simulationCallback(self, components: List['Component'], ensembles: List['Ensemble'], iteration: int, run: int):
         """
-        Performed after each simulation.
+        Performed after each simulation run.
 
         Parameters
         ----------
@@ -157,7 +160,7 @@ class Experiment(abc.ABC):
             List of potential ensembles (returned by `prepareSimulation`).
         iteration
             Number of the current iteration.
-        simulation
+        run
             Number of the current simulation (in the current iteration).
         """
         pass
@@ -179,12 +182,9 @@ class Experiment(abc.ABC):
 
     # running the simulation and experiment
 
-    def run_simulation(
-            self,
-            components: List['Component'],
-            ensembles: List['Ensemble']):
+    def runSimulation(self, components: List['Component'], ensembles: List['Ensemble']):
         """
-        Runs the simulation with `components` and `ensembles` for `steps` steps.
+        Performs one runs of the simulation with `components` and `ensembles` for `self.config.steps` steps.
 
         Parameters
         ----------
@@ -192,13 +192,6 @@ class Experiment(abc.ABC):
             All components in the system.
         ensembles
             All potential ensembles in the system.
-        steps
-            Number of steps to run.
-        stepCallback
-            This function is called after each simulation step. It can be used for example to log data from the simulation. The parameters are:
-                - list of all components in the system,
-                - list of materialized ensembles (in this time step),
-                - current time step (int).
         """
 
         for step in range(self.config.steps):
@@ -212,10 +205,10 @@ class Experiment(abc.ABC):
             self.stepCallback(components, materializedEnsembles, step)
 
     def run(self):
-
         """
-        Runs `iterations` iteration of the experiment. Each iteration consist of running the simulation `simulations` times (each simulation is run for `steps` steps) and then performing training of the Estimator (ML model).
-        """
+        Runs `self.config.iterations` iterations of the experiment.
+        Each iteration consist of running the simulation `self.config.simulations` times (each simulation is run for
+        `self.config.steps` steps) and then performing training of the Estimators (ML models)."""
 
         self.initEstimators()
 
@@ -228,7 +221,7 @@ class Experiment(abc.ABC):
 
                 components, ensembles = self.prepareSimulation(iteration, simulation)
 
-                self.run_simulation(components, ensembles)
+                self.runSimulation(components, ensembles)
 
                 self.simulationCallback(components, ensembles, iteration, simulation)
 

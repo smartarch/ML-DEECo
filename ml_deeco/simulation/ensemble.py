@@ -24,7 +24,8 @@ class someOf(Iterable, Sized):
         compClass
             Only components of this type can become members of this role.
         selectedAllAtOnce
-            If False, the members are selected one at the time. If True, selection will run only once and select all the members are selected simultaneously.
+            If False, the members are selected one at the time. If True, selection will run only once and select all the
+            members are selected simultaneously.
         """
         # the id is used for sorting - the roles are evaluated in the same order they are defined
         self.id = someOf.counter
@@ -50,10 +51,12 @@ class someOf(Iterable, Sized):
         return self.selections[instance]
 
     def __iter__(self):
-        raise NotImplementedError("This should not be called. Use the 'someOf' as a property and work with the returned list.")
+        raise NotImplementedError(
+            "This should not be called. Use the 'someOf' as a property and work with the returned list.")
 
     def __len__(self) -> int:
-        raise NotImplementedError("This should not be called. Use the 'someOf' as a property and work with the returned list.")
+        raise NotImplementedError(
+            "This should not be called. Use the 'someOf' as a property and work with the returned list.")
 
     def cardinality(self, cardinalityFn: Callable[['Ensemble'], Union[int, Tuple[int, int]]]):
         """
@@ -62,7 +65,9 @@ class someOf(Iterable, Sized):
         Parameters
         ----------
         cardinalityFn
-            The function which returns the cardinality of the role. The returned value should be an `int` (maximum allowed number of components) or a tuple of two `int`s (minimum, maximum). Both minimum and maximum are inclusive.
+            The function which returns the cardinality of the role. The returned value should be an `int` (maximum
+            allowed number of components) or a tuple of two `int`s (minimum, maximum). Both minimum and maximum are
+            inclusive.
         """
         self.cardinalityFn = cardinalityFn
         return self
@@ -76,7 +81,8 @@ class someOf(Iterable, Sized):
         selectFn
             The select predicate of the role. The parameters of the function are:
                 - the ensemble instance (self),
-                - the component instance (only components of type `compClass` specified in the `__init__` are considered),
+                - the component instance (only components of type `compClass` specified in the `__init__` are
+                  considered),
                 - the list of already materialized ensembles.
             If the predicate returns `True`, the component can be selected for the role.
         """
@@ -93,7 +99,8 @@ class someOf(Iterable, Sized):
             The utility function of the components for role. The parameters of the function are:
                 - the ensemble instance (self),
                 - the component instance (only components which passed the `select` are considered).
-            During materialization, the components are ordered by the descending utility (components with the biggest utility are selected).
+            During materialization, the components are ordered by the descending utility (components with the biggest
+            utility are selected).
         """
         self.utilityFn = utilityFn
         return self
@@ -214,7 +221,8 @@ class someOfWithEstimate(someOf):
 
     def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
         """
-        Automatically collect data with a variable time difference (from a specified interval) between inputs and targets.
+        Automatically collect data with a variable time difference (from a specified interval) between inputs and
+        targets.
 
         Parameters
         ----------
@@ -223,7 +231,8 @@ class someOfWithEstimate(someOf):
         maxTimeSteps : int
             Maximal allowed difference of time steps for collecting data.
         trainingPercentage : float
-            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger than 1 is used to select only part of the data for training.
+            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger
+            than 1 is used to select only part of the data for training.
         """
         self.estimate.inTimeStepsRange(minTimeSteps, maxTimeSteps, trainingPercentage)
         return self
@@ -240,7 +249,7 @@ class someOfWithEstimate(someOf):
         return sel
 
     def initEstimates(self, experiment):
-        self.estimate.init(experiment)
+        self.estimate.linkExperiment(experiment)
 
     def collectEstimateData(self, instance, allComponents, materialized):
         if self.estimate.collectOnlyIfMaterialized and not materialized:
@@ -284,7 +293,9 @@ class oneOf(someOf):
 class oneOfWithEstimate(someOfWithEstimate):
     def __init__(self, compClass, estimate: 'Estimate', collectOnlyIfMaterialized: bool):
         if hasattr(compClass, "estimate"):
-            raise TypeError(f"The component type '{self.compClass}' cannot be used with 'oneOfWithEstimate' as it already has another attribute named 'estimate'. Please rename the attribute 'estimate' in '{self.compClass}'.")
+            raise TypeError(f"The component type '{self.compClass}' cannot be used with 'oneOfWithEstimate' as it "
+                            f"already has another attribute named 'estimate'. Please rename the attribute 'estimate' in"
+                            f" '{self.compClass}'.")
         super().__init__(compClass, estimate, collectOnlyIfMaterialized)
         self.cardinalityFn = lambda inst: 1
 
@@ -326,7 +337,8 @@ class Ensemble:
         self.materialized = False
 
         # sort the roles of the ensemble according to id
-        # note: depending on the name of the select and cardinality functions, we might get duplicates here which we definitely don't want
+        # note: depending on the name of the select and cardinality functions, we might get duplicates here which we
+        #   definitely don't want
         compFields = sorted(set([fld for (fldName, fld) in type(self).__dict__.items()
                                  if not fldName.startswith('__') and isinstance(fld, someOf)]),
                             key=lambda fld: fld.id)
@@ -368,12 +380,14 @@ class Ensemble:
 
     def collectEstimatesData(self, components):
         """
-        Collects data for Estimates assigned to ensembles and ensemble roles. This is called from the simulation after a step is performed.
+        Collects data for Estimates assigned to ensembles and ensemble roles. This is called from the simulation after a
+        step is performed.
         """
         # ensemble roles
         rolesWithEstimate = [fld for (fldName, fld) in type(self).__dict__.items()
                              if not fldName.startswith('__') and isinstance(fld, someOfWithEstimate)]
-        # note: depending on the name of the 'select', 'utility' and 'cardinality' functions, we might get duplicates here which we definitely don't want
+        # note: depending on the name of the 'select', 'utility' and 'cardinality' functions, we might get duplicates
+        #   here which we definitely don't want
         for role in set(rolesWithEstimate):
             role.collectEstimateData(self, components, self.materialized)
 
@@ -388,8 +402,9 @@ class Ensemble:
 
     @classmethod
     def initEstimates(cls, experiment: 'Experiment'):
-        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in the 'using' method."""
-        
+        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in
+        the 'using' method."""
+
         # ensemble roles
         rolesWithEstimate = [fld for (fldName, fld) in cls.__dict__.items()
                              if not fldName.startswith('__') and isinstance(fld, someOfWithEstimate)]
@@ -400,4 +415,4 @@ class Ensemble:
         estimates = [fld for (fldName, fld) in cls.__dict__.items()
                      if not fldName.startswith('__') and isinstance(fld, Estimate)]
         for estimate in estimates:
-            estimate.init(experiment)
+            estimate.linkExperiment(experiment)

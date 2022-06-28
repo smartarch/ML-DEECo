@@ -84,9 +84,9 @@ class AverageLog(Log):
         return self.getColumn(column, self.avgRecords)
 
 
-def readYaml (file):
+def readYaml(file):
     with open(file, "r") as stream:
         try:
             return yaml.load(stream, Loader=yaml.CLoader)
         except yaml.YAMLError as e:
-                raise e
+            raise e

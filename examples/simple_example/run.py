@@ -18,7 +18,7 @@ class TruckExperiment(Experiment):
     def prepareSimulation(self, iteration, simulation):
         """This is called before each simulation."""
 
-        # we initialize the truck
+        # create the truck component
         from truck import Truck
 
         self.truck = Truck(Point2D(0, 0))

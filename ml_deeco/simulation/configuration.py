@@ -5,10 +5,9 @@ from ml_deeco.utils import readYaml
 
 
 class Configuration:
+    """Class for loading and holding the configuration of the experiment."""
 
-    def __init__(self,
-                 configFiles: List[Union[str, bytes, os.PathLike]] = None,
-                 **kwargs):
+    def __init__(self, configFiles: List[Union[str, bytes, os.PathLike]] = None, **kwargs):
 
         self.loadDefaultConfiguration()
 
@@ -35,6 +34,8 @@ class Configuration:
         self.estimators = {}
 
     def loadConfigurationFromFile(self, configFile: Union[str, bytes, os.PathLike]):
+        """Loads configuration from a yaml file. It updates current configuration by replacing values with the same
+        keys. Dictionaries are updated recursively."""
         yaml = readYaml(configFile)
         for key, value in yaml.items():
             self.setConfig(key, value)

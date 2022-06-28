@@ -11,31 +11,11 @@ import seaborn as sns
 from pathlib import Path
 
 from ml_deeco.estimators import CategoricalFeature, BinaryFeature, Estimate, BoundFeature
+from ml_deeco.estimators.helpers import binary_confusion_matrix, confusion_matrix
 from ml_deeco.utils import Log, verbosePrint
 
 
 Data = namedtuple('Data', ['x', 'y'])
-
-
-def binary_confusion_matrix(y_true_class, y_pred_class):
-    return [[
-        np.sum((y_true_class == 1) & (y_pred_class == 1)),
-        np.sum((y_true_class == 1) & (y_pred_class == 0)),
-    ], [
-        np.sum((y_true_class == 0) & (y_pred_class == 1)),
-        np.sum((y_true_class == 0) & (y_pred_class == 0)),
-    ]]
-
-
-def confusion_matrix(y_true_class, y_pred_class):
-    n = int(max(y_true_class.max(), y_pred_class.max())) + 1
-    return [
-        [
-            np.sum((y_true_class == true) & (y_pred_class == pred))
-            for pred in range(n)
-        ]
-        for true in range(n)
-    ]
 
 
 #########################
@@ -198,6 +178,8 @@ class Estimator(abc.ABC):
     @abc.abstractmethod
     def predict(self, x):
         """
+        Computes the predictions for one example.
+
         Parameters
         ----------
         x : np.ndarray
@@ -212,6 +194,8 @@ class Estimator(abc.ABC):
 
     def predictBatch(self, X):
         """
+        Computes the predictions for a batch of examples.
+
         Parameters
         ----------
         X : np.ndarray
@@ -227,6 +211,8 @@ class Estimator(abc.ABC):
     @abc.abstractmethod
     def train(self, X, Y):
         """
+        Trains the model on given data.
+
         Parameters
         ----------
         X : np.ndarray
@@ -238,6 +224,11 @@ class Estimator(abc.ABC):
 
     def evaluate(self, X, Y, label):
         """
+        Performs an evaluation of the model on given data.
+
+        For every target feature, an evaluation is performed and if `saveCharts` was set to true when constructing the
+        estimator (default) a plot with the predictions and true values is saved to the `outputFolder`.
+
         Parameters
         ----------
         X : np.ndarray

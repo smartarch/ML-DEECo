@@ -3,7 +3,7 @@ Estimates
 """
 import abc
 from collections import namedtuple
-from enum import Enum, auto
+from enum import Enum
 from typing import Callable, List, TYPE_CHECKING, Optional, Dict, Union
 import numpy as np
 
@@ -17,12 +17,13 @@ BoundFeature = namedtuple('BoundFeature', ('name', 'feature', 'function'))
 
 
 class DataCollectorMode(Enum):
-    First = auto()  # keep only the first record for each recordId
-    Last = auto()   # keep only the last record for each recordId
-    All = auto()    # keep all records for each recordId
+    First = 1  # keep only the first record for each recordId
+    Last = 2   # keep only the last record for each recordId
+    All = 3    # keep all records for each recordId
 
 
 class DataCollector:
+    """Data storage for the training data to match them by `recordId`."""
 
     def __init__(self, estimate, begin=DataCollectorMode.All):
         self.estimate = estimate
@@ -32,6 +33,7 @@ class DataCollector:
         self.y = []
 
     def collectRecordInputs(self, recordId, inputs, extra=None, force_replace=False):
+        """Collects inputs for a given `recordId`."""
         if recordId not in self._records or force_replace:
             self._records[recordId] = []
 
@@ -48,6 +50,7 @@ class DataCollector:
                 records[0] = (inputs, extra)
 
     def collectRecordTargets(self, recordId, targets, recordGuards, *args):
+        """Collects targets (true values) for a given `recordId`."""
         if recordId not in self._records:
             # the record with corresponding ID doesn't exist, the data probably weren't valid at the time
             return
@@ -101,8 +104,9 @@ class Estimate(abc.ABC):
         self.dataCollector = DataCollector(self, **dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 
-    def init(self, experiment):
-        """Assigns an estimator from the experiment. This is necessary when the estimator was specified as a string in the 'using' method."""
+    def linkExperiment(self, experiment):
+        """Assigns an estimator from the experiment. This is necessary when the estimator was specified as a string in
+        the 'using' method."""
         from ml_deeco.estimators import Estimator
         if isinstance(self.estimator, str):
             if not hasattr(experiment, self.estimator) or \
@@ -112,7 +116,8 @@ class Estimate(abc.ABC):
             self.estimator.assignEstimate(self)
 
     def using(self, estimator: Union['Estimator', str]):
-        """Assigns an estimator to the estimate."""
+        """Assigns an estimator to the estimate. If the `estimator` is specified as a string, the `linkExperiment`
+        method must be called before using the estimator."""
         from ml_deeco.estimators import Estimator
         self.estimator = estimator
         if isinstance(estimator, Estimator):
@@ -126,7 +131,8 @@ class Estimate(abc.ABC):
 
     @abc.abstractmethod
     def prepare(self):
-        """The prepare function is called after all the decorators have initialized the inputs, targets, etc. and can be used to modify them."""
+        """The prepare function is called after all the decorators have initialized the inputs, targets, etc. and can be
+        used to modify them."""
         pass
 
     def check(self):
@@ -154,18 +160,21 @@ class Estimate(abc.ABC):
         """
         Defines an extra input feature – not given to the prediction model.
 
-        We use this for example to save the time of the inputs in the time-to-condition estimate so that we can compute the time difference.
+        We use this for example to save the time of the inputs in the time-to-condition estimate so that we can compute
+        the time difference.
         """
         self._addExtra(function.__name__, function)
         return function
 
     def inputsId(self, function):
-        """Defines the function for matching the inputs with according targets. Unless there is a specific need for modifying the default behavior, do not use this decorator."""
+        """Defines the function for matching the inputs with according targets. Unless there is a specific need for
+        modifying the default behavior, do not use this decorator."""
         self.inputsIdFunction = function
         return function
 
     def targetsId(self, function):
-        """Defines the function for matching the targets with according inputs. Unless there is a specific need for modifying the default behavior, do not use this decorator."""
+        """Defines the function for matching the targets with according inputs. Unless there is a specific need for
+        modifying the default behavior, do not use this decorator."""
         self.targetsIdFunction = function
         return function
 
@@ -175,7 +184,8 @@ class Estimate(abc.ABC):
         return function
 
     def recordValid(self, function):
-        """Guard for detecting whether the combination of inputs and outputs are valid and can be used for training. Use this as a decorator."""
+        """Guard for detecting whether the combination of inputs and outputs are valid and can be used for training.
+        Use this as a decorator."""
         self.recordGuards.append(function)
         return function
 
@@ -206,12 +216,14 @@ class Estimate(abc.ABC):
         Parameters
         ----------
         ignoreCache : bool
-            Set to True to ignore the cached values (which are used only for role-assigned estimates) and compute the estimate again.
+            Set to True to ignore the cached values (which are used only for role-assigned estimates) and compute the
+            estimate again.
 
         Returns
         -------
         prediction : Any
-            The predicted value (if there is only one target), or a dictionary `{ feature_name: predicted_value }` with all targets.
+            The predicted value (if there is only one target), or a dictionary `{ feature_name: predicted_value }` with
+            all targets.
         """
         if self.estimateCache and not ignoreCache:  # the cache is non-empty
             ensemble, comp = args
@@ -223,7 +235,8 @@ class Estimate(abc.ABC):
         return self._estimate(*args)
 
     def cacheEstimates(self, ensemble, components):
-        """Computes the estimates for all components in a batch at the same time and caches the results. Use this only for estimates assigned to ensemble roles."""
+        """Computes the estimates for all components in a batch at the same time and caches the results. Use this only
+        for estimates assigned to ensemble roles."""
         if self.estimator.experiment.useBaselines:
             self.estimateCache[ensemble] = {
                 comp: self.baseline(ensemble, comp)
@@ -344,7 +357,8 @@ class Estimate(abc.ABC):
 
 class ValueEstimate(Estimate, abc.ABC):
     """
-    Implementation of the value estimate (both regression and classification). Predicts a future value based on current observations.
+    Implementation of the value estimate (both regression and classification). Predicts a future value based on current
+    observations.
     """
 
     def __init__(self):
@@ -363,7 +377,8 @@ class ValueEstimate(Estimate, abc.ABC):
 
     def inTimeStepsRange(self, minTimeSteps, maxTimeSteps, trainingPercentage=1):
         """
-        Automatically collect data with a variable time difference (from a specified interval) between inputs and targets.
+        Automatically collect data with a variable time difference (from a specified interval) between inputs and
+        targets.
 
         Parameters
         ----------
@@ -372,7 +387,8 @@ class ValueEstimate(Estimate, abc.ABC):
         maxTimeSteps : int
             Maximal allowed difference of time steps for collecting data.
         trainingPercentage : float
-            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger than 1 is used to select only part of the data for training.
+            Percentage (between 0 and 1) of the collected data to use for training. If it is lower than 1, a step bigger
+            than 1 is used to select only part of the data for training.
         """
         self.__class__ = ValueEstimateRange  # use the ValueEstimateRange implementation instead of ValueEstimate
 
@@ -405,8 +421,9 @@ class ValueEstimate(Estimate, abc.ABC):
 
 class ValueEstimateRange(ValueEstimate):
     """
-    Implementation of the value estimate (both regression and classification) with a range of time differences between inputs and outputs.
-    This class should not be used directly and should only be obtained using the 'ValueEstimate().inTimeStepsRange(...)' call.
+    Implementation of the value estimate (both regression and classification) with a range of time differences between
+    inputs and outputs. This class should not be used directly and should only be obtained using the
+    'ValueEstimate().inTimeStepsRange(...)' call.
     """
 
     # noinspection PyMissingConstructor
@@ -454,22 +471,27 @@ class TimeEstimate(Estimate):
         self.conditionFunctions = []
 
     def prepare(self):
-        # The conditions work the same way as targets guards (false == invalid data), but we want to perform them after all the guards passed.
+        # The conditions work the same way as targets guards (false == invalid data), but we want to perform them after
+        # all the guards passed.
         self.targetsGuards += self.conditionFunctions
 
     def time(self, function):
-        """Defines how to measure time for the time-to-condition estimate. The default uses the current time step of the simulation, so if the simulation is run using our `run_simulation`, there is no need to overriding the default behavior using this function."""
+        """Defines how to measure time for the time-to-condition estimate. The default uses the current time step of the
+        simulation, so if the simulation is run using our `Experiment` class, there is no need to overriding the default
+        behavior using this function."""
         self.timeFunc = function
         self.extras = [BoundFeature("time", TimeFeature(), self.timeFunc)]
         return function
 
     def condition(self, function):
-        """Defines the condition for the time-to-condition estimate. If multiple conditions are defined, they are considered in an "and" manner."""
+        """Defines the condition for the time-to-condition estimate. If multiple conditions are defined, they are
+        considered in an "and" manner."""
         self.conditionFunctions.append(function)
         return function
 
     def conditionsValid(self, function):
-        """Guard for detecting whether the conditions are valid and can be used for training. Use this as a decorator."""
+        """Guard for detecting whether the conditions are valid and can be used for training. Use this as a
+        decorator."""
         self.targetsGuards.append(function)
         return function
 

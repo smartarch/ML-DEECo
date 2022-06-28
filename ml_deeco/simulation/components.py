@@ -52,11 +52,12 @@ class Component(metaclass=ComponentMeta):
 
     @classmethod
     def initEstimates(cls, experiment: 'Experiment'):
-        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in the 'using' method."""
+        """Assigns the experiment to the estimates. This is necessary when the estimator was specified as a string in
+        the 'using' method."""
         estimates = [fld for (fldName, fld) in cls.__dict__.items()
                      if not fldName.startswith('__') and isinstance(fld, Estimate)]
         for estimate in estimates:
-            estimate.init(experiment)
+            estimate.linkExperiment(experiment)
 
     def __repr__(self) -> str:
         return self.id

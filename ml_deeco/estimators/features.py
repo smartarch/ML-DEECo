@@ -2,6 +2,9 @@ import enum
 from typing import Union, List, Type
 import numpy as np
 
+from ml_deeco.estimators.helpers import one_hot
+
+
 class Feature:
 
     @staticmethod
@@ -46,17 +49,12 @@ class CategoricalFeature(Feature):
         else:
             return [f"{featureName}_{item}" for item in self.categories]
 
-    def one_hot(self, index, size):
-        array = np.zeros(size)
-        array[index] = 1
-        return array
-
     def preprocess(self, value):
         if self.isEnum():
             index = int(value)
         else:
             index = self.categories.index(value)
-        return self.one_hot(index, self.numItems)
+        return one_hot(index, self.numItems)
 
     def postprocess(self, value):
         if self.isEnum():
