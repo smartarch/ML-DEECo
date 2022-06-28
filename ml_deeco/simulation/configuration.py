@@ -1,15 +1,18 @@
+import os
+from typing import Union, List
+
 from ml_deeco.utils import readYaml
 
 
 class Configuration:
 
     def __init__(self,
-                 configFiles: list = [],
+                 configFiles: List[Union[str, bytes, os.PathLike]] = None,
                  **kwargs):
 
         self.loadDefaultConfiguration()
 
-        if len(configFiles) > 0:
+        if configFiles and len(configFiles) > 0:
             for f in configFiles:
                 self.loadConfigurationFromFile(f)
 
@@ -31,11 +34,25 @@ class Configuration:
         self.locals = {}
         self.estimators = {}
 
-    # TODO: make updates recursive -> update values in 'locals' dictionary, not replace all of them
-    def loadConfigurationFromFile(self, configFile):
+    def loadConfigurationFromFile(self, configFile: Union[str, bytes, os.PathLike]):
         yaml = readYaml(configFile)
         for key, value in yaml.items():
             self.setConfig(key, value)
 
     def setConfig(self, key, value):
+        """Sets the configuration value for a specific key. If the previous value was a dictionary, it is updated recursively."""
+        if key in self.__dict__:
+            oldVal = self.__dict__[key]
+            if isinstance(oldVal, dict) and isinstance(value, dict):
+                self._nestedUpdate(oldVal, value)
+                return
+
         self.__dict__[key] = value
+
+    def _nestedUpdate(self, oldDict, newDict):
+        for k, v in newDict.items():
+            oldVal = oldDict.get(k, None)
+            if isinstance(oldVal, dict) and isinstance(v, dict):
+                self._nestedUpdate(oldVal, v)
+            else:
+                oldDict[k] = v
