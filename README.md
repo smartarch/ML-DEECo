@@ -2,7 +2,7 @@
 
 ML-DEECo is a machine-learning-enabled component model for adaptive component architectures. It is based on DEECo component model, which features autonomic *components* and dynamic component coalitions (called *ensembles*). ML-DEECo allows exploiting machine learning in decisions about adapting component coalitions at runtime.
 
-The framework uses neural networks trained in a supervised manner. A simulation of the system is run to collect data used for training the neural network. The simulation can then be run again with the trained model to see the impact of the learned model on the system.
+The framework provides abstractions for getting predictions (estimates) about the future state of the system. It uses machine learning models trained in a supervised manner to obtain these predictions. A simulation of the system is run to collect data used for training the ML model. The simulation can then be run again with the trained model to see the impact of the learned model on the system.
 
 ## Contents
 
@@ -32,6 +32,8 @@ pip install --editable .
 ## Usage
 
 The ML-DEECo framework provides abstractions for creating components and ensembles and assigning machine learning estimates to them. A simulation can then be run with the components and ensembles to observe behavior of the system and collect data for training the estimates. The trained estimate can then be used in the next run of the simulation.
+
+The configuration of the simulation (lists of components and ensembles, number of steps of the simulation, etc.) is managed by a class derived from the `Experiment` class. See section [TODO] for more details. *TODO: loading of the YAML files*
 
 ### Specifying components
 
@@ -136,13 +138,11 @@ The framework performs ensemble materialization (selection of the ensembles whic
 
 ### Adding machine-learning-based estimates
 
-There are two types of tasks our framework focuses on &ndash; value estimate and time-to-condition estimate.
+There are two types of tasks our framework focuses on &ndash; *value estimate* and *time-to-condition* estimate.
 
-In the value estimate, we use the currently available observations to predict some value that can be observed only at some future point (after a fixed amount of time steps). Based on the type of the estimated value, the supervised ML models are usually divided into regression and classification.
+In the *value* estimate, we use the currently available observations to predict some value that can be observed only at some future point. Based on the type of the estimated value, the supervised ML models are usually divided into regression and classification.
 
-The time-to-condition estimates focuses on predicting how long it will take until some condition will become true. This is done by specifying a condition over some future values of component fields.
-
-The tasks are described in more detail in the paper.
+The *time-to-condition* estimates focuses on predicting how long it will take until some condition will become true. This is done by specifying a condition over some future values of component fields.
 
 The definition of each estimate is split to three parts:
 
@@ -154,10 +154,17 @@ All of these steps are realized using the `ml_deeco.estimators` module.
 
 #### Estimator
 
-Estimator represents the underlying machine learning model for computing the estimates. The framework features `ConstantEstimator` and `NeuralNetworkEstimator`.
+Estimator represents the underlying machine learning model for computing the estimates. The framework currently provides implementation of several estimators:
+
+* `ConstantEstimator` &ndash; Predicts a constant value, does not train at all. This serves as a baseline.
+* `NeuralNetworkEstimator` &ndash; Fully-connected feedforward neural network implemented using the [TensorFlow framework](https://www.tensorflow.org/).
+* `LinearRegressionEstimator` &ndash; Linear regression model (for regression only) implemented using the [Scikit-learn](https://scikit-learn.org/) framework.
+
+Other estimators can be implemented by deriving from the `Estimator` class. See the `ml_deauto.estimators.Estimator` class for more details and the list of methods which must be implemented. This way, one can use other ML model with ML-DEECo.
 
 Common parameters for the initializer of the `Estimator`s are:
 
+* `experiment` &ndash; The `Experiment` instance in which the estimator is used.
 * `outputFolder` &ndash; The collected training data and evaluation of the training is exported there. Set to `None` to disable export.
 * `name` &ndash; String to identify the `Estimator` in the printed output of the framework (if `printLogs` is `True` and verbosity level was set by `ml_deeco.utils.setVerboseLevel`).
 * `accumulateData` &ndash; If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training.
@@ -169,11 +176,18 @@ The `NeuralNetworkEstimator` uses [TensorFlow framework](https://www.tensorflow.
 ```py
 from ml_deeco.estimators import NeuralNetworkEstimator
 
+experiment = ...
+
 futureBatteryEstimator = NeuralNetworkEstimator(
+    experiment,
     hidden_layers=[256, 256],  # two hidden layers
     outputFolder="results/drone_battery", name="Drone Battery"
 )
 ```
+
+##### TODO: Configuring estimators using the YAML files
+
+*TODO*
 
 #### Adding the estimate
 
@@ -181,9 +195,11 @@ futureBatteryEstimator = NeuralNetworkEstimator(
 
 The estimate is created by instantiating the `ValueEstimate` class (future value estimate &ndash; both regression and classification) or `TimeEstimate` (time-to-condition estimate) and assigned as class variables of the component (in fact, they are implemented as properties).
 
-In case of value estimate, the number of time steps we want to predict into the future is set using the `inTimeSteps` method.
+In case of value estimate, the number of time steps we want to predict into the future is set using the `inTimeSteps` or `inTimeStepsRange` methods. The `inTimeSteps` sets a fixed number of time steps between the current time and the time of the predictions. The `inTimeStepsRange` methods allows specifying a range of valid time differences between the current time and the time of the predictions (the desired time difference is then specified as the last argument when obtaining the estimate).
 
 For both `ValueEstimate` and `TimeEstimate`, the `Estimator` (described in the previous section) must be assigned. That is done by the `using` method.
+
+*TODO: using with string* 
 
 Multiple estimates can be assigned to a component.
 
@@ -327,7 +343,7 @@ class Drone(MovingComponent2D):
 
 #### Obtaining the estimated value
 
-The `Estimate` object is callable, so the value of the estimate based on the current inputs can be obtained by calling the estimate as a function. For estimate assigned to a role, a component instance is expected as an argument of the call.
+The `Estimate` object is callable, so the value of the estimate based on the current inputs can be obtained by calling the estimate as a function. For estimate assigned to a role, a component instance is expected as an argument of the call. If the `ValueEstimate` was created using the `inTimeStepsRange` method, an additional argument is expected when calling the estimate to set the desired time of prediction.
 
 Example in a component:
 
@@ -407,7 +423,6 @@ For role-assigned estimates, we compute the estimated values for all potential m
 
 ## Examples
 
-In the `examples` folder, two example projects are located:
+In the `examples` folder, one example project is located:
 
 * [`simple_example`](examples/simple_example) &ndash; a simple example showing basic usage of the ML-DEECo framework.
-* [`all_example`](examples/all_example) &ndash; example of all predictions defined in the taxonomy (serves mainly as a test of the implementation).
