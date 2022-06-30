@@ -254,9 +254,9 @@ The estimate is created by instantiating the `ValueEstimate` class (future value
 
 In case of value estimate, the number of time steps we want to predict into the future is set using the `inTimeSteps` or `inTimeStepsRange` methods. The `inTimeSteps` sets a fixed number of time steps between the current time and the time of the predictions. The `inTimeStepsRange` methods allows specifying a range of valid time differences between the current time and the time of the predictions (the desired time difference is then specified as the last argument when obtaining the estimate).
 
-For both `ValueEstimate` and `TimeEstimate`, the `Estimator` (described in the previous section) must be assigned. That is done by the `using` method.
+For both `ValueEstimate` and `TimeEstimate`, the `Estimator` (described in the previous section) must be assigned. That is done by the `using` method. The estimators specified in the YAML file are instantiated by our framework, and they are available via attributes of the `Experiment` instance. For example, if the experiment is configured using the example YAML configuration above, one can assign the defined battery estimator like this: `ValueEstimate().using(experiment.batteryEstimator)`. 
 
-*TODO: using with string* 
+As this requires a reference to the experiment object, we also provide an additional option to prevent cyclic dependencies in the Python files. The estimator can be specified using a string identifier &ndash; `ValueEstimate().using('batteryEstimator')` &ndash; and connected to the experiment later using the `initEstimates` class method on `Component` or `Ensemble` &ndash; `Drone.initEstimates(experiment.)`. An example usage of this can also be seen in the [`simple_example`](examples/simple_example).
 
 Multiple estimates can be assigned to a component.
 
@@ -432,33 +432,29 @@ class DroneChargingAssignment(Ensemble):
         return drone.needsCharging(waitingTime)
 ```
 
-### Running the simulation **TODO**
+### Running the simulation
 
-The `ml_deeco.simulation` module offers two functions for running the simulation: `run_simulation` and `run_experiment`.
+The whole simulation can be assembled by subclasses the `Experiment` class from the `ml_deeco.simulation` module.
 
-#### `run_simulation`
+The user is required to implement the `prepareSimulation` method, which is called before each simulation run, and it is expected to provide the components and ensembles for the simulation.
 
-The `run_simulation(components, ensembles, steps)` function runs the simulation with `components` and `ensembles` for `steps` steps. An optional `stepCallback` can be supplied which is called after each simulation step. It can be used for example to log data from the simulation. The parameters are:
+To run the experiment, use the `run` method of the derived experiment class. The number of *iterations*, *simulation runs*, and *steps* in each simulation is set in the configuration object when creating a new experiment instance. The `run` method then runs `iterations` iterations. In each iteration, the simulation is run `simulations` times. Each simulation is run for `steps` steps. After finishing all the simulation runs in one iteration, the estimators (ML models) are trained on the data collected during the iteration. The next iteration will use the updated models.
 
-* list of all components in the system,
-* list of materialized ensembles (in this time step),
-* current time step (int).
+The `Experiment` class also provides several optional callbacks to collect data from the simulation runs. These are implemented by overriding the appropriate methods in the `Experiment` class.
 
-Before running the simulation, the `Estimator`s have to be initialized. The easiest way to do that is by calling the `SIMULATION_GLOBALS.initEstimators()`.
-
-#### `run_experiment`
-
-The `run_experiment` is useful for running the simulation several times with training of the ML models in between. The `iterations` parameter specifies the number of iterations. In each iteration, the simulation is run `simulations` times. After that, the data from all the simulations in the current iteration are used to train the ML model (`Estimator`). The next iteration will use the updated model.
-
-The `prepareSimulation` function is used to obtain the components and ensembles for the simulation (it gets the current iteration and the current simulation as parameters). The simulation is then run using our `run_simulation` function for `steps` steps.
-
-The `prepareIteration` is an optional function to be run at the beginning of each iteration. It can be used for example to initialize logs for logging data during simulations. Apart from the `stepCallback`, we also allow specifying a `simulationCallback` (ran after each simulation) and `iterationCallback` (ran at the end of iteration after the ML training finished).
-
-The initialization of the `Estimator`s is done automatically in the `run_experiment` function.
+* `stepCallback` is called after each simulation step. It can be used for example to log data from the simulation. The parameters are:
+  * list of all components in the system,
+  * list of materialized ensembles (in this time step),
+  * current time step (int).
+* `prepareIteration` is an optional function to be run at the beginning of each iteration. It can be used for example to initialize logs for logging data during simulations. 
+* `simulationCallback` is ran after each simulation.
+* `iterationCallback` is ran at the end of iteration after the ML training finished.
 
 #### Running the simulation manually
 
-For better control over the simulation, one can also run the simulation loop manually. The functions `materialize_ensembles` and `actuate_components` can be useful for that (they are used inside our `run_simulation`).
+For better control over the simulation, one can also run the simulation loop manually. The functions `materialize_ensembles` and `actuate_components` (in the `ml_deeco.simulation` module) can be useful for that (and we use them in the implementation of the `run` method).
+
+When one runs the simulation manually, one must initialize the estimators before running the simulation by calling `initEstimators` method of the `Experiment` instance.
 
 ## Notes to implementation
 
