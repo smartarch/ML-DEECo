@@ -4,7 +4,7 @@ This aims to be a simple minimal example which shows how to use ML-DEECo. It ass
 
 The example models a package transportation use case. We assume to have a truck which can pick up packages and transport them to a station. To simplify the case, the truck will only move along one route with the station on one end and a package storage on the other end.
 
-The example requires Python 3 with `numpy`, `sklearn`, `matplotlib` and `seaborn` libraries installed. Furthermore, the `ml_deeco` package must be installed (see [README file of `ml_deeco`](../../../ml_deeco/README.md#installation)).
+The example requires Python 3 with `pyyaml`, `numpy`, `sklearn`, `matplotlib` and `seaborn` libraries installed. Furthermore, the `ml_deeco` package must be installed (see [README file of `ml_deeco`](../../../ml_deeco/README.md#installation)).
 
 ## Running the example
 

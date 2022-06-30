@@ -24,5 +24,6 @@ setuptools.setup(
         "numpy>=1.21.3",
         "seaborn>=0.11.1",
         "matplotlib>=3.5.1",
+        "pyyaml>=6.0",
     ],
 )
