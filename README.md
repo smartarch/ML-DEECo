@@ -33,7 +33,44 @@ pip install --editable .
 
 The ML-DEECo framework provides abstractions for creating components and ensembles and assigning machine learning estimates to them. A simulation can then be run with the components and ensembles to observe behavior of the system and collect data for training the estimates. The trained estimate can then be used in the next run of the simulation.
 
-The configuration of the simulation (lists of components and ensembles, number of steps of the simulation, etc.) is managed by a class derived from the `Experiment` class. See section [TODO] for more details. *TODO: loading of the YAML files*
+The configuration of the simulation (lists of components and ensembles, number of steps of the simulation, etc.) is managed by a class derived from the `Experiment` class. See section [Running the simulation](#running-the-simulation) for more details.
+
+A typical ML experiment in ML-DEECo consists of several *iterations*. In each iteration, the simulation is run multiple times to collect data, and then the training of the ML model is performed. Each run of the simulation consists of *steps* -- in each step, the ensembles are reformed and the components are actuated.
+
+### Loading configuration
+
+The configuration is stored in the `Configuration` object which is passed to the `Experiment` when creating its instance, and it is then accessible through the `Experiment.config` field.
+
+The configuration can either be created by passing the variables as keyword arguments of the constructor of the `Configuration` object:
+```py
+from ml_deeco.simulation import Configuration
+
+configuration = Configuration(
+    iterations=2,   # we run two iterations -- the ML model trains between iterations
+    simulations=1,  # one simulation in each iteration
+    steps=80,       # the simulation is run for 80 steps
+)
+```
+or it can be loaded from a YAML file:
+```py
+from ml_deeco.simulation import Configuration
+
+configuration = Configuration()
+configuration.loadConfigurationFromFile('config.yaml')
+```
+When loading a new configuration file, the values of the configuration are replaced in a recursive manner. Only the values which exist in the new file are updated and the values which were only in the previous configuration are kept.
+
+The most important top-level keys of the configuration are:
+* `name` &ndash; name of the experiment (it is used as a label in some plots produced by the framework),
+* `output` &ndash; folder for the outputs of the experiment run (plots, training data, ...),
+* `iterations` &ndash; number of iterations of the experiment,
+* `simulations` &ndash; number of simulation runs in each iteration,
+* `steps` &ndash; number of steps of the simulation,
+* `verbose`: verbosity level of the text output of the experiment (0 = no output, 2 = recommended, 4 = most verbose).
+* `plot` &ndash; set to true to produce evaluation plots for the ML models, 
+* `estimators` &ndash; described in section [Configuring estimators using the YAML files](#configuring-estimators-using-the-yaml-files)
+
+*TODO*: locals, example
 
 ### Specifying components
 
@@ -126,6 +163,7 @@ class ChargingAssignment(Ensemble):
         return 0, self.charger.free_slots
 
     def __init__(self, charger):
+        super().__init__()
         self.charger = charger
 
     def actuate(self):
@@ -162,6 +200,10 @@ Estimator represents the underlying machine learning model for computing the est
 
 Other estimators can be implemented by deriving from the `Estimator` class. See the `ml_deauto.estimators.Estimator` class for more details and the list of methods which must be implemented. This way, one can use other ML model with ML-DEECo.
 
+The estimators can be either instantiated directly or they can be specified in the YAML configuration files.
+
+##### Parameters of the estimators
+
 Common parameters for the initializer of the `Estimator`s are:
 
 * `experiment` &ndash; The `Experiment` instance in which the estimator is used.
@@ -185,9 +227,24 @@ futureBatteryEstimator = NeuralNetworkEstimator(
 )
 ```
 
-##### TODO: Configuring estimators using the YAML files
+The `LinearRegressionEstimator` does not have any specific constructor parameters. It is implemented using the [Scikit-learn](https://scikit-learn.org/) framework.
 
-*TODO*
+##### Configuring estimators using the YAML files
+
+A top-level key `estimators` can be defined in the YAML configuration files. This key is expected to be a dictionary of entries, each defining one of the estimators.
+
+Each entry shall contain two fields: `class` and `args`. The `class` defines the type of the estimator. It is instantiated at the beginning of the experiment by the ML-DEECo framework. A full path to the class is expected, e.g. for `LinearRegressionEstimator`, the `class` is specified as `ml_deeco.estimators.LinearRegressionEstimator`. The `args` field represents the parameters for the constructor of the estimator (as specified in the previous section; the `experiment` is loaded automatically).
+
+Example configuration:
+```yaml
+estimators:
+  batteryEstimator: 
+    class: ml_deeco.estimators.NeuralNetworkEstimator
+    args:
+      hidden_layers: [64]
+      name: "Battery"
+      outputFolder: 'battery'
+```
 
 #### Adding the estimate
 
