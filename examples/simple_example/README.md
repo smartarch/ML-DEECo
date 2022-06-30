@@ -30,7 +30,7 @@ def fuel(self):
     return self.fuel
 ```
 
-Notice that the `'truckFuelEstimator'` is assigned to the estimate using a string identifier. The Estimator (ML model) is created inside the `TruckExperiment` in the [`run.py`](run.py) (see section [Simulation](#simulation)).
+Notice that the `'truckFuelEstimator'` is assigned to the estimate using a string identifier. The Estimator (ML model) is created inside the `TruckExperiment` in the [`run.py`](run.py) and assigned to the estimate using the `initEstimates` method (see section [Simulation](#simulation)).
 
 We also add guards to prevent collecting data when the truck is inactive:
 ```py
@@ -44,9 +44,11 @@ def not_terminated(self):
 
 We use an ensemble to assign a job to the truck &ndash; [`package_ensemble.py`](package_ensemble.py). If the truck is available, the ensemble orders it to go pick up a package. When the truck is loaded, it transports the package to the station and becomes available again. We assume there are enough packages in the storage, so the ensemble will assign another package once the truck is available again.
 
-### Simulation *TODO*
+### Simulation
 
-The simulation is run from the [`run.py`](run.py) file. We use the *TODO: `run_experiment`* function from `ml_deeco.simulation` to perform the two iterations of running the simulation with ML model training in between iterations. We only run the simulation once in each iteration, but running it more times is useful for collecting more data for training the ML model.
+The simulation is managed by the `TruckExperiment` class (derived from the `ml_deeco.simulation.Experiment` class).
+
+When creating the `TruckExperiment` object, we set the configuration to two iterations of running the simulation with ML model training in between iterations. We only run the simulation once in each iteration, but running it more times is useful for collecting more data for training the ML model. The truck component and package ensemble for each simulation run are created in the `prepareSimulation` method.
 
 ## Results
 

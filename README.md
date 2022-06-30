@@ -115,7 +115,6 @@ The `MovingComponent2D` offers the `move` method which will move the component i
 ```py
 from ml_deeco.simulation import StationaryComponent2D, MovingComponent2D
 
-
 # Example of a stationary component -- a charging station
 class Charger(StationaryComponent2D):
 
@@ -135,7 +134,6 @@ class Charger(StationaryComponent2D):
             if drone.battery == 1:
                 # fully charged
                 drone.station = None
-
 
 # Example of an agent -- moving component
 class Drone(MovingComponent2D):
@@ -169,7 +167,6 @@ The member selection works by first finding all components of the correct type t
 
 ```py
 from ml_deeco.simulation import Ensemble, someOf
-
 
 class ChargingAssignment(Ensemble):
     # static role
