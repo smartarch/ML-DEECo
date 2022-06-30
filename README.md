@@ -70,7 +70,38 @@ The most important top-level keys of the configuration are:
 * `plot` &ndash; set to true to produce evaluation plots for the ML models, 
 * `estimators` &ndash; described in section [Configuring estimators using the YAML files](#configuring-estimators-using-the-yaml-files)
 
-*TODO*: locals, example
+### Configuration YAML file example
+
+This is an example YAML file with a configuration of an experiment.
+
+```yaml
+name: 12drones
+output: results/12drones
+
+iterations: 2
+simulations: 2
+steps: 200
+
+estimators:
+  batteryEstimator: 
+    class: ml_deeco.estimators.LinearRegressionEstimator
+    args:
+      name: "Battery"
+      outputFolder: 'battery'
+      accumulateData: True
+      saveCharts: False
+
+locals:
+  drones: 12
+  birds: 100
+  chargers: [
+    [17,29],
+    [22,21],
+    [28,13],
+  ]
+```
+
+We first set the name of the experiment and the output folder. Then, we provide the number of iterations, simulations and steps. There is one estimator defined for predicting the battery of the drone &ndash; using the linear regression model. Lastly we set the values specific to this experiment to the `locals` key &ndash; number of drones in the system, number of birds, locations of chargers.
 
 ### Specifying components
 
