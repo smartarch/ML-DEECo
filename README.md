@@ -7,6 +7,7 @@ The framework provides abstractions for getting predictions (estimates) about th
 ## Contents
 
 * [Installation](#installation)
+* [Short summary of ensemble-based component systems](#short-summary-of-ensemble-based-component-systems)
 * [Usage](#usage)
   * [Specifying components](#specifying-components)
   * [Specifying ensembles](#specifying-ensembles)
@@ -28,6 +29,18 @@ For local development, installing with `--editable` is recommended:
 ```txt
 pip install --editable .
 ```
+
+## Short summary of ensemble-based component systems
+
+ML-DEECo is based on the DEECo component model ([Bures et al.](https://dl.acm.org/doi/10.1145/2465449.2465462)). We want to very briefly introduce the concepts of *components* and *ensembles* before describing the details of ML-DEECo usage.
+
+### Component
+
+Components are autonomous agents in the system. Based on the knowledge they have, they can independently operate in the environment. In ML-DEECo, the components have an `actuate` method which is executed in every step of the simulation, and it thus comprises the behavior of the component.
+
+### Ensemble
+
+An ensemble is a group of components created to express that the components are bound with the same objective (i.e., behavior). The ensembles are used for knowledge exchange among the member components and their coordination. The ensembles are formed and dismantled dynamically at runtime as the objectives emerge in the system and are completed. The member components of the ensemble are also selected dynamically at every step of the simulation.
 
 ## Usage
 
@@ -72,7 +85,7 @@ The most important top-level keys of the configuration are:
 
 ### Configuration YAML file example
 
-This is an example YAML file with a configuration of an experiment.
+This is an example YAML file with a configuration of an experiment (smart farm simulation featuring drones, birds and chargers).
 
 ```yaml
 name: 12drones
@@ -135,7 +148,7 @@ class Charger(StationaryComponent2D):
                 # fully charged
                 drone.station = None
 
-# Example of an agent -- moving component
+# Example of a moving component -- a flying drone
 class Drone(MovingComponent2D):
 
     def __init__(self, location, speed):
