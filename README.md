@@ -93,7 +93,7 @@ output: results/12drones
 
 iterations: 2
 simulations: 2
-steps: 200
+steps: 500
 
 estimators:
   batteryEstimator: 
