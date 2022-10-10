@@ -100,7 +100,7 @@ class Estimate(abc.ABC):
         self.targetsGuards: List[Callable] = []
         self.recordGuards: List[Callable] = []
 
-        self.baseline = lambda *args: 0
+        self.baseline = lambda *args: self.estimator.baseline
         self.dataCollector = DataCollector(self, **dataCollectorKwargs)
         self.estimateCache: Dict[Dict] = dict()  # used only for estimates assigned to roles
 

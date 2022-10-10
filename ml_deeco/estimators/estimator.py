@@ -60,6 +60,7 @@ class Estimator(abc.ABC):
         """
         self.experiment = experiment
         experiment.appendEstimator(self)
+        self.baseline = 0
 
         self.data: List[Data] = []
         if outputFolder is not None:

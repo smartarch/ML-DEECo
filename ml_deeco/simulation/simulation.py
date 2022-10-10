@@ -78,7 +78,7 @@ class Experiment(abc.ABC):
         if 'estimators' in self.config.__dict__:
             for estimatorName, estimator in self.config.estimators.items():
                 className = estimator['class']
-                constructorArgs = estimator['args'] if estimator['args'] is not None else {}
+                constructorArgs = estimator['args'] if 'args' in estimator else {}
                 components = className.split('.')
                 module = __import__('.'.join(components[:-1]))
                 for component in components[1:]:
@@ -94,6 +94,10 @@ class Experiment(abc.ABC):
                 }
 
                 obj = classCreator(**constructorArgs)
+
+                if 'baseline' in estimator:
+                    obj.baseline = estimator['baseline']
+
                 self.__dict__[estimatorName] = obj
 
     def appendEstimator(self, estimator):
