@@ -58,10 +58,11 @@ class DataCollector:
         records = self._records[recordId]
         del self._records[recordId]
 
+        callable_targets = {name: target for name, target in targets.items() if callable(target)}
+
         for inputs, extra in records:
-            for name in targets:
-                if callable(targets[name]):
-                    targets[name] = targets[name](inputs, extra)
+            for name in callable_targets:
+                targets[name] = callable_targets[name](inputs, extra)
 
             for guard in recordGuards:
                 guardParamCount = guard.__code__.co_argcount
