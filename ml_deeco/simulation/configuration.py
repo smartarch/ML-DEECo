@@ -11,11 +11,11 @@ class Configuration:
 
         self.loadDefaultConfiguration()
 
-        if configFiles and len(configFiles) > 0:
+        if configFiles:
             for f in configFiles:
                 self.loadConfigurationFromFile(f)
 
-        if len(kwargs) > 0:
+        if kwargs:
             for key, value in kwargs.items():
                 self.setConfig(key, value)
 
@@ -47,6 +47,9 @@ class Configuration:
             if isinstance(oldVal, dict) and isinstance(value, dict):
                 self._nestedUpdate(oldVal, value)
                 return
+        if key[-7:] == ".append" and key[:-7] in self.__dict__:
+            self.__dict__[key[:-7]] = self.__dict__[key[:-7]] + value
+            return
 
         self.__dict__[key] = value
 
