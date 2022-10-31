@@ -40,7 +40,7 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True):
+    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True, saveData=True):
         """
         Parameters
         ----------
@@ -57,6 +57,8 @@ class Estimator(abc.ABC):
             If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training. If set to an integer `k`, data from the last `k` iterations are used for training (setting this to `1` is thus equivalent to setting it to `False`).
         saveCharts: bool
             If `True`, charts are generated from the evaluation of the model.
+        saveData: bool
+            If `True`, all training data are saved into the output folder.
         """
         self.experiment = experiment
         experiment.appendEstimator(self)
@@ -80,6 +82,7 @@ class Estimator(abc.ABC):
         else:
             raise ValueError("Invalid value for 'accumulateData'")
         self._saveCharts = saveCharts
+        self._saveData = saveData
 
         self._iteration = 0
 
@@ -262,7 +265,7 @@ class Estimator(abc.ABC):
                 dataLog.register(list(t) + list(p))
 
             if self._outputFolder is not None:
-                dataLog.export(self._outputFolder/ f"{self._iteration}-evaluation-{label}-{targetName}.csv")
+                dataLog.export(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.csv")
 
             if type(feature) == BinaryFeature:
                 metric = self.evaluate_binary_classification(label, targetName, y_pred, y_true)
@@ -340,7 +343,7 @@ class Estimator(abc.ABC):
 
         self.collectData()
 
-        if self._outputFolder is not None:
+        if self._saveData and self._outputFolder is not None:
             self.saveData(self._outputFolder / f"{self._iteration}-data.csv")
 
         count = sum((len(d.x) for d in self.data))
