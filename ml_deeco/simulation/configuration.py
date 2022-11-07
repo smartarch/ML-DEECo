@@ -30,6 +30,7 @@ class Configuration:
         self.seed = 42
         self.verbose = 0
         self.threads = 4
+        self.configs = []
         self.locals = {}
         self.estimators = {}
 

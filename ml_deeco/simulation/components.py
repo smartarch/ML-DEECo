@@ -1,3 +1,4 @@
+import abc
 from typing import TYPE_CHECKING
 
 from ml_deeco.estimators import Estimate
@@ -6,7 +7,7 @@ if TYPE_CHECKING:
     from ml_deeco.simulation import Experiment
 
 
-class ComponentMeta(type):
+class ComponentMeta(abc.ABCMeta):
     """
     Metaclass for Component. Uses a counter to automatically generate the component ID.
     """
