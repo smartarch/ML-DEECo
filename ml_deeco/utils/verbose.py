@@ -1,5 +1,7 @@
+from typing import IO, Optional
+
 verboseLevel = 0
-file = None
+file: Optional[IO] = None
 
 
 def setVerboseLevel(level):
@@ -10,6 +12,11 @@ def setVerboseLevel(level):
 def setVerbosePrintFile(outputFile):
     global file
     file = outputFile
+
+
+def closeVerbosePrintFile():
+    if file:
+        file.close()
 
 
 def verbosePrint(message: str, minVerbosity: int):
