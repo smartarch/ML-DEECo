@@ -200,7 +200,7 @@ class Experiment(abc.ABC):
 
         for step in range(self.config.steps):
 
-            verbosePrint(f"Step {step + 1}:", 3)
+            verbosePrint(f"Step {step}:", 3)
             self.currentTimeStep = step
 
             materializedEnsembles = materialize_ensembles(components, ensembles)
@@ -217,11 +217,11 @@ class Experiment(abc.ABC):
         self.initEstimators()
 
         for iteration in range(self.config.iterations):
-            verbosePrint(f"Iteration {iteration + 1} started at {datetime.now()}:", 1)
+            verbosePrint(f"Iteration {iteration} started at {datetime.now()}:", 1)
             self.prepareIteration(iteration)
 
             for simulation in range(self.config.simulations):
-                verbosePrint(f"Simulation {simulation + 1} started at {datetime.now()}:", 2)
+                verbosePrint(f"Simulation {simulation} started at {datetime.now()}:", 2)
 
                 components, ensembles = self.prepareSimulation(iteration, simulation)
 
