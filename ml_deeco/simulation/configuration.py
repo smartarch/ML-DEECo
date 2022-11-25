@@ -51,6 +51,9 @@ class Configuration:
         if key[-7:] == ".append" and key[:-7] in self.__dict__:
             self.__dict__[key[:-7]] = self.__dict__[key[:-7]] + value
             return
+        if key[-8:] == ".prepend" and key[:-8] in self.__dict__:
+            self.__dict__[key[:-8]] = value + self.__dict__[key[:-8]]
+            return
 
         self.__dict__[key] = value
 
