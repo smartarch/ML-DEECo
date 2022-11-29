@@ -141,4 +141,4 @@ class NeuralNetworkEstimator(Estimator):
     def loadModel(self, modelPath=None):
         if modelPath is None:
             modelPath = self._outputFolder / "model.h5"
-        self._model = tf.keras.models.load_model(modelPath)
+        self._model = tf.keras.models.load_model(modelPath, custom_objects={"identity": tf.identity})

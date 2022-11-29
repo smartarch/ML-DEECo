@@ -40,7 +40,7 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True, saveData=True):
+    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True, saveData=True, saveEvaluation=True):
         """
         Parameters
         ----------
@@ -56,9 +56,11 @@ class Estimator(abc.ABC):
         accumulateData: bool or int
             If set to `True`, data from all previous iterations are used for training. If set to `False` (default), only the data from the last iteration are used for training. If set to an integer `k`, data from the last `k` iterations are used for training (setting this to `1` is thus equivalent to setting it to `False`).
         saveCharts: bool
-            If `True`, charts are generated from the evaluation of the model.
+            If `True`, charts are generated from the evaluation of the model. For saving the data used to generate these charts, use `saveEvaluation`.
         saveData: bool
             If `True`, all training data are saved into the output folder.
+        saveEvaluation: bool
+            If `True`, all evaluation data (golden values and predictions) are saved into the output folder. For saving charts generated from this data, use `saveCharts`.
         """
         self.experiment = experiment
         experiment.appendEstimator(self)
@@ -83,8 +85,9 @@ class Estimator(abc.ABC):
             raise ValueError("Invalid value for 'accumulateData'")
         self._saveCharts = saveCharts
         self._saveData = saveData
+        self._saveEvaluation = saveEvaluation
 
-        self._iteration = 0
+        self._iteration = -1
 
         self._estimates: List[Estimate] = []
         self._initialized = False
@@ -264,7 +267,7 @@ class Estimator(abc.ABC):
             for t, p in zip(y_true, y_pred):
                 dataLog.register(list(t) + list(p))
 
-            if self._outputFolder is not None:
+            if self._saveEvaluation and self._outputFolder is not None:
                 dataLog.export(self._outputFolder / f"{self._iteration}-evaluation-{label}-{targetName}.csv")
 
             if type(feature) == BinaryFeature:
@@ -367,7 +370,7 @@ class Estimator(abc.ABC):
             self.verbosePrint(f"{self.name} ({self.estimatorName}): Training {self._iteration} started at {datetime.now()}: ", 1)
             self.verbosePrint(f"{self.name} ({self.estimatorName}): Train data shape: {train_x.shape}, test data shape: {test_x.shape}.", 2)
 
-            if self._iteration > 1:
+            if self._iteration > 0:
                 self.evaluate(train_x, train_y, label="Before-Train")
                 if test_size > 0:
                     self.evaluate(test_x, test_y, label="Before-Test")
