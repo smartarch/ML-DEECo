@@ -71,6 +71,7 @@ class Experiment(abc.ABC):
         self.baselineEstimator = 0
         self.estimators: List['Estimator'] = []
         self.createEstimators()
+        self.lastIteration = None  # If the experiment is stopped before the `config.iterations` iterations, the last iteration number is saved here.
 
     # helper functions
 
@@ -142,6 +143,22 @@ class Experiment(abc.ABC):
         pass
 
     def iterationCallback(self, iteration: int):
+        """
+        Performed when all simulations from the iteration are finished (before the training of Estimators).
+
+        Parameters
+        ----------
+        iteration
+            Number of the current iteration.
+
+        Returns
+        -------
+        stopExperiment: bool
+            If `True`, the experiment is stopped.
+        """
+        return False
+
+    def trainingCallback(self, iteration: int):
         """
         Performed at the end of each iteration (after the training of Estimators).
 
@@ -229,9 +246,13 @@ class Experiment(abc.ABC):
 
                 self.simulationCallback(components, ensembles, iteration, simulation)
 
+            if self.iterationCallback(iteration):
+                self.lastIteration = iteration
+                break
+
             for estimator in self.estimators:
                 estimator.endIteration()
 
-            self.iterationCallback(iteration)
+            self.trainingCallback(iteration)
 
             self.useBaselines = False

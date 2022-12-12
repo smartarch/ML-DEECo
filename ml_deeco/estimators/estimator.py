@@ -282,7 +282,7 @@ class Estimator(abc.ABC):
 
     def evaluate_regression(self, label, targetName, y_pred, y_true):
         mse = np.mean((y_true - y_pred) ** 2)
-        self.verbosePrint(f"{label} – {targetName} MSE: {mse:.4g}", 2)
+        self.verbosePrint(f"{label} - {targetName} MSE: {mse:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
             lims = min(y_true.min(), y_pred.min()), max(y_true.max(), y_pred.max())
@@ -305,7 +305,7 @@ class Estimator(abc.ABC):
         y_true_class = np.squeeze(y_true > 0.5)
         y_pred_class = np.squeeze(y_pred > 0.5)
         accuracy = np.mean(y_true_class == y_pred_class)
-        self.verbosePrint(f"{label} – {targetName} Accuracy: {accuracy:.4g}", 2)
+        self.verbosePrint(f"{label} - {targetName} Accuracy: {accuracy:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
             cm = binary_confusion_matrix(y_true_class, y_pred_class)
@@ -323,7 +323,7 @@ class Estimator(abc.ABC):
         y_true_class = np.argmax(y_true, axis=1)
         y_pred_class = np.argmax(y_pred, axis=1)
         accuracy = np.mean(y_true_class == y_pred_class)
-        self.verbosePrint(f"{label} – {targetName} Accuracy: {accuracy:.4g}", 2)
+        self.verbosePrint(f"{label} - {targetName} Accuracy: {accuracy:.4g}", 2)
 
         if self._saveCharts and self._outputFolder is not None:
             cm = confusion_matrix(y_true_class, y_pred_class)
@@ -367,7 +367,7 @@ class Estimator(abc.ABC):
                 test_x = x[:0, :]  # empty
                 test_y = y[:0, :]  # empty
 
-            self.verbosePrint(f"{self.name} ({self.estimatorName}): Training {self._iteration} started at {datetime.now()}: ", 1)
+            self.verbosePrint(f"{self.name} ({self.estimatorName}): Training {self._iteration + 1} started at {datetime.now()}: ", 1)
             self.verbosePrint(f"{self.name} ({self.estimatorName}): Train data shape: {train_x.shape}, test data shape: {test_x.shape}.", 2)
 
             if self._iteration > 0:
