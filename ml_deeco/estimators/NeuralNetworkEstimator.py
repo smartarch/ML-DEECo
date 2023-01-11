@@ -7,6 +7,7 @@ DEFAULT_FIT_PARAMS = {
     "epochs": 50,
     "validation_split": 0.2,
     "callbacks": [tf.keras.callbacks.EarlyStopping(patience=10)],
+    "batch_size": 32,
 }
 
 
@@ -74,6 +75,7 @@ class NeuralNetworkEstimator(Estimator):
             self._loss,
         )
 
+        # model.summary()
         return model
 
     def inferActivation(self):
@@ -89,6 +91,7 @@ class NeuralNetworkEstimator(Estimator):
             return tf.keras.activations.sigmoid
         elif type(targetFeature) == TimeFeature:
             return tf.keras.activations.exponential
+            # return tf.math.softplus
         else:
             raise ValueError(f"{self.name} ({self.estimatorName}): Cannot automatically infer activation for '{type(targetFeature)}'. Specify the 'activation' manually.")
 
@@ -104,6 +107,7 @@ class NeuralNetworkEstimator(Estimator):
             return tf.losses.BinaryCrossentropy()
         elif type(targetFeature) == TimeFeature:
             return tf.losses.Poisson()
+            # return tf.losses.MeanSquaredError()
         else:
             raise ValueError(f"{self.name} ({self.estimatorName}): Cannot automatically infer loss for '{type(targetFeature)}'. Specify the 'loss' manually.")
 
@@ -111,7 +115,10 @@ class NeuralNetworkEstimator(Estimator):
         return self._model(x.reshape(1, -1)).numpy()[0]
 
     def predictBatch(self, X):
-        return self._model(X).numpy()
+        if X.shape[0] > self._fit_params["batch_size"]:
+            return self._model.predict(X, batch_size=self._fit_params["batch_size"])
+        else:
+            return self._model(X).numpy()
 
     def train(self, x, y):
         history = self._model.fit(
@@ -128,7 +135,9 @@ class NeuralNetworkEstimator(Estimator):
         epochs = range(1, self._fit_params["epochs"] + 1)
         for row in zip(epochs, history.history["loss"], history.history["val_loss"]):
             trainLog.register(row)
-        trainLog.export(self._outputFolder / f"{self._iteration}-training.csv")
+        if self._outputFolder is not None:
+
+            trainLog.export(self._outputFolder / f"{self._iteration}-training.csv")
 
     def saveModel(self, suffix=""):
         suffix = str(suffix)

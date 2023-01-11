@@ -24,7 +24,7 @@ class Feature:
 
 class CategoricalFeature(Feature):
 
-    def __init__(self, categories: Union[List, Type[enum.IntEnum]]):
+    def __init__(self, categories: Union[List, Type[enum.IntEnum], int]):
         """
         Feature for a known set of possible categories. Preprocessing is done by one-hot encoding.
 
@@ -33,6 +33,8 @@ class CategoricalFeature(Feature):
         categories
             List of possible values or an IntEnum class.
         """
+        if type(categories) == int:
+            categories = list(range(categories))
         assert len(categories) > 0, "CategoricalFeature: The number of categories must be bigger than 0."
         self.categories = categories
         self.numItems = len(self.categories)

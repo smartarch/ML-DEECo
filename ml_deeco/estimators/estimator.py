@@ -40,7 +40,9 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False, testSplit=0.2, printLogs=True, accumulateData=False, saveCharts=True, saveData=True, saveEvaluation=True):
+    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False,
+                 skipEvaluation=False, testSplit=0.2, accumulateData=False,
+                 printLogs=True, saveCharts=True, saveData=True, saveEvaluation=True):
         """
         Parameters
         ----------
@@ -50,6 +52,8 @@ class Estimator(abc.ABC):
             String to identify the `Estimator` in the printed output of the framework (if `printLogs` is `True` and verbosity level was set by `ml_deeco.utils.setVerboseLevel`).
         skipEndIteration: bool
             Skip the training and evaluation of the model. This can be used to disable the `Estimator` temporarily while experimenting with different models.
+        skipEvaluation: bool
+            Do not perform evaluation of the trained model.
         testSplit: float
             The fraction of the data to be used for evaluation.
         printLogs: bool
@@ -77,6 +81,7 @@ class Estimator(abc.ABC):
         self._outputFolder = outputFolder
         self.name = name
         self._skipEndIteration = skipEndIteration
+        self._skipEvaluation = skipEvaluation
         self._testSplit = testSplit
         self._printLogs = printLogs
         if type(accumulateData) == bool or (type(accumulateData) == int and accumulateData >= 1):
@@ -249,6 +254,9 @@ class Estimator(abc.ABC):
         float | List[float]
             Evaluation metrics (only one if we have only one target).
         """
+        if self._skipEvaluation:
+            return
+
         predictions = self.predictBatch(X)
 
         currentIndex = 0
