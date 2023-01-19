@@ -8,8 +8,12 @@ from .NoEstimator import NoEstimator
 try:
     from .NeuralNetworkEstimator import NeuralNetworkEstimator
 except ImportError:  # tf not installed
-    pass
+    class NeuralNetworkEstimator:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("tensorflow not installed")
 try:
     from .LinearRegressionEstimator import LinearRegressionEstimator
 except ImportError:  # sklearn not installed
-    pass
+    class LinearRegressionEstimator:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("sklearn not installed")

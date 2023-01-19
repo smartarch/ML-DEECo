@@ -170,7 +170,7 @@ class someOf(Iterable, Sized):
         # perform the selection
         sel = self.selectComponents(instance, allComponents, otherEnsembles)
         if self.runSelectOnlyOnce:
-            sel = sorted(sel, key=operator.itemgetter(0))
+            sel = sorted(sel, key=operator.itemgetter(0), reverse=True)
             self.selections[instance] = [c for u, c in sel[:cardinalityMax]]
         else:
             for idx in range(cardinalityMax):
