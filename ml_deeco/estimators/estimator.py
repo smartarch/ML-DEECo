@@ -7,6 +7,8 @@ from typing import List
 from collections import namedtuple
 import numpy as np
 from matplotlib import pyplot as plt
+# import matplotlib as mpl
+# import mpl_scatter_density
 import seaborn as sns
 from pathlib import Path
 
@@ -298,6 +300,9 @@ class Estimator(abc.ABC):
             fig = plt.figure(figsize=(10, 10))
             plt.axes(aspect='equal')
             plt.scatter(y_pred, y_true, alpha=0.5)
+            # ax = plt.axes(aspect='equal', projection='scatter_density')
+            # ax.scatter_density(y_pred, y_true, color='tab:blue', dpi=12)
+            # ax.scatter_density(y_pred, y_true, color='tab:blue', dpi=72, norm=mpl.colors.LogNorm())
             plt.xlabel('Predictions')
             plt.ylabel('True Values')
             plt.title(f"{self.name} ({self.estimatorName})\nIteration {self._iteration}, target: {targetName}\n{label} MSE: {mse:.3f}")
