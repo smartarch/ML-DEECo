@@ -54,9 +54,9 @@ class Point2D:
         return dl
 
     @staticmethod
-    def random(x1: int, y1: int, x2: int, y2: int):
+    def random(left: int, top: int, right: int, bottom: int):
         """Returns a random point in the specified rectangular area."""
-        return Point2D(random.randrange(x1, x2), random.randrange(y1, y2))
+        return Point2D(random.randrange(left, right), random.randrange(top, bottom))
 
 
 class StationaryComponent2D(Component):

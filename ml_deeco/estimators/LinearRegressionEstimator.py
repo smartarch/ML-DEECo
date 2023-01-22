@@ -1,12 +1,14 @@
 from sklearn import linear_model
 
-from ml_deeco.estimators import Estimator
+from ml_deeco.estimators.ScikitEstimator import ScikitEstimator
 
 
-class LinearRegressionEstimator(Estimator):
+class LinearRegressionEstimator(ScikitEstimator):
     """
-    use a simple ml method to perform regression
+    Estimator using sklearn.linear_model.LinearRegression
+    (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)
     """
+
     @property
     def estimatorName(self):
         return f"Linear Regression"
@@ -14,9 +16,3 @@ class LinearRegressionEstimator(Estimator):
     def __init__(self, experiment, **kwargs):
         super().__init__(experiment, **kwargs)
         self._model = linear_model.LinearRegression()
-
-    def train(self, X, y):
-        self._model.fit(X, y)
-
-    def predict(self, x):
-        return self._model.predict([x])[0]
