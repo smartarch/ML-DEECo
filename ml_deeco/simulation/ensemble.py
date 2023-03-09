@@ -34,7 +34,7 @@ class someOf(Iterable, Sized):
         self.compClass = compClass
 
         self.cardinalityFn = lambda _ens: (0, None)
-        self.selectFn = None
+        self.selectFn = lambda _ens, _comp, _matEns: True
         self.utilityFn = lambda _ens, _comp: 0
         self.runSelectOnlyOnce = selectedAllAtOnce
 

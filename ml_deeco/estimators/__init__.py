@@ -20,7 +20,7 @@ try:
 except ImportError:  # sklearn not installed
     class MissingScikitEstimator:
         def __init__(self, *args, **kwargs):
-            raise ImportError("sklearn not installed")
+            raise ImportError("scikit-learn not installed")
 
     class LinearRegressionEstimator(MissingScikitEstimator):
         pass
