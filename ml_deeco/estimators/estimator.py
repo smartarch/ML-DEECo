@@ -42,7 +42,8 @@ class Estimator(abc.ABC):
     Similarly, the `self._get_target_features()` method returns the targets (outputs) of the model.
     """
 
-    def __init__(self, experiment, *, baseFolder=None, outputFolder=None, name="", skipEndIteration=False,
+    def __init__(self, experiment, *, baseline=0,
+                 baseFolder=None, outputFolder=None, name="", skipEndIteration=False,
                  skipEvaluation=False, testSplit=0.2, accumulateData=False,
                  printLogs=True, saveCharts=True, saveData=True, saveEvaluation=True):
         """
@@ -70,7 +71,7 @@ class Estimator(abc.ABC):
         """
         self.experiment = experiment
         experiment.appendEstimator(self)
-        self.baseline = 0
+        self.baseline = baseline
 
         self.data: List[Data] = []
         if outputFolder is not None:
