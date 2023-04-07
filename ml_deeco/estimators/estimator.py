@@ -190,6 +190,9 @@ class Estimator(abc.ABC):
     def saveModel(self, suffix=""):
         pass
 
+    def loadModel(self, modelPath=None):
+        raise NotImplementedError
+
     @abc.abstractmethod
     def predict(self, x):
         """
