@@ -203,7 +203,7 @@ class Estimate(abc.ABC):
 
     def _estimate(self, *args):
         """Helper function to compute the estimate."""
-        if self.estimator.experiment.useBaselines:
+        if self.estimator.useBaselines:
             return self.baseline(*args)
 
         x = self.generateRecord(*args)

@@ -145,6 +145,10 @@ class Estimator(abc.ABC):
 
         self._initialized = True
 
+    @property
+    def useBaselines(self):
+        return self.experiment.useBaselines
+
     def collectData(self):
         iteration_x, iteration_y = [], []
         for estimate in self._estimates:
